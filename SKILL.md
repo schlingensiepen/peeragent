@@ -116,13 +116,19 @@ also a valid JSON array. The messages you will see for
 ```
 {"type":"agent.starting","harness":"claude","folder":"/path/to/project","model":null,"resume":false}
 {"type":"agent.pane","session":"peeragent-project-claude-a3f1c9e2","awaiting":"ready","lines":["..."]}
-{"type":"agent.prompt_sent","session":"peeragent-project-claude-a3f1c9e2","bytes":312}
 {"type":"agent.started","session":"peeragent-project-claude-a3f1c9e2","pane_pid":18320,"child_processes":[{"pid":18321,"comm":"claude","args":"claude"}]}
 ```
 
-`agent.prompt_sent` appears only for harnesses that receive the
-prompt after boot (`codex`, `opencode`, `copilot`). `claude` and
-`agy` receive it as a command-line argument at launch.
+For `codex`, `opencode` and `copilot`, which receive the prompt
+after boot, an additional message appears between `agent.pane` and
+`agent.started`:
+
+```
+{"type":"agent.prompt_sent","session":"peeragent-project-codex-b7e2d0f1","bytes":312}
+```
+
+`claude` and `agy` receive the prompt as a command-line argument at
+launch, so this message does not appear for them.
 
 Basic message types that can appear anywhere:
 
@@ -146,7 +152,7 @@ normal case, not the exception.
 
 | `awaiting` | What it means | What you do |
 |---|---|---|
-| `ready` | The harness shows its prompt and accepted the launch prompt. | Continue with your task. |
+| `ready` | The harness shows its input prompt and is ready for work. | Continue with your task. |
 | `trust_prompt` | The harness asks whether to trust the directory. | Answer with `tmux send-keys -t <session> "1" Enter`, or ask the user, depending on your policy. |
 | `auth_prompt` | The harness is not logged in. | Inform the user that an external login is required. peeragent does not automate logins. |
 | `provider_prompt` | The harness needs a model provider configured (typical for `opencode`). | Inform the user that the harness needs configuration. |

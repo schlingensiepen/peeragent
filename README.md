@@ -18,10 +18,11 @@ peeragent ships together with a Claude Code skill,
 
 ## Status
 
-Pre-release. The command-line contract described here is fixed;
-the two implementations under `tools/` are being built against it.
-Until they land, the repository layout, the skill and the output
-format are the deliverables.
+Pre-release. This README describes the intended command-line
+contract; the two implementations under `tools/`, the documentation
+under `docs/`, the tests and the examples are not yet in this
+repository. Until they land, the skill and this description are the
+deliverables.
 
 ## Supported harnesses
 
@@ -96,7 +97,7 @@ Messages that need a human's attention carry `user_relevant: true`
 and a `hint` string. The Python and Bash implementations produce
 structurally equivalent streams: the same message types with the
 same field names and semantically equal values. A conformance test
-under `tests/conformance/` checks this.
+under `tests/conformance/` is planned to check this.
 
 ## Exit codes
 
@@ -118,7 +119,7 @@ or `CREDENTIAL` (case-insensitive) are redacted. There is no
 rotation and no bundling command; delete old files when they
 bother you.
 
-## Repository layout
+## Planned repository layout
 
 ```
 README.md      this file
