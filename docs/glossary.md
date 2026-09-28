@@ -129,9 +129,10 @@ tested is recorded in [MATURITY.md](../MATURITY.md).
   capture and the post-boot diagnosis.
 - **trust, auth and provider prompts** — the interactive questions
   a harness asks before it becomes productive: whether it may work
-  in this directory, that it is not logged in, or that it needs a
-  provider configured. All five harnesses block on one of these on
-  a first start in a new directory.
+  in this directory, that no account is logged in, or that no
+  provider is configured. The first question follows from the
+  directory, the other two from how the harness is set up on the
+  machine.
 - **trust_answer** — the handler constant holding the key sequence
   that answers a trust question with yes. peeragent names it in a
   hint and does not send it itself.

@@ -138,10 +138,16 @@ the alternative. It happens before anything is copied.
 
 ## Known limits
 
-- All five harnesses block on the first launch in a new directory:
-  `claude`, `codex` and `copilot` with a trust question, `agy` with a
-  login selection, `opencode` with a missing provider. That is the
-  normal case, not the exception, and the caller has to handle it.
+- Expect the first launch to stop before any work, and note that
+  there are two different reasons for it. `claude`, `codex` and
+  `copilot` ask whether they may work in the directory, which follows
+  from the directory being new to them. `agy` asks for a login
+  method and `opencode` for a provider whenever none is configured,
+  which follows from how the harness is set up on the machine and
+  has nothing to do with the directory. On a machine where those two
+  are configured, their first screen has not been observed here, so
+  what they show then is `unverified`. Either way the caller has to
+  handle a first screen that is not ready.
 - There is no back channel. peeragent reports the first screen and
   returns; the launched harness keeps running in its tmux session.
   Anything the launched harness should report back has to be

@@ -65,16 +65,26 @@ Markers are matched case-sensitively against the visible pane text.
 When a harness changes its wording in a new release, the result
 becomes `unknown` — never a wrong `ready`.
 
-## All five harnesses block on the first start in a new directory
+## The first start stops before any work, for two different reasons
 
 This is the normal case, not an edge case. Plan for it.
+
+Keep the two causes apart. A trust question follows from the
+directory being new to the harness, so it appears once per
+directory. A login or provider question follows from how the
+harness is set up on the machine, so it appears until someone
+configures it and then not again, whatever the directory.
 
 On 2026-08-17, four of five harnesses were not able to answer
 anything five seconds after starting in a fresh directory: the
 Codex CLI and the GitHub Copilot CLI asked for directory trust,
 the Antigravity CLI asked for a login method, and OpenCode had no
 provider. On 2026-09-23, Claude Code 2.1.278 was found to have a
-trust prompt of its own. All five block.
+trust prompt of its own. So on a machine where no account and no
+provider are configured, all five stop. What the two
+account-gated harnesses show on a machine where they are
+configured has not been observed, so treat it as unknown rather
+than as ready.
 
 | Harness | First screen in a fresh directory | Key sequence |
 |---|---|---|

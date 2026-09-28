@@ -114,8 +114,10 @@ Exit code 0. This is a successful run: the harness is up, and it
 is waiting for an answer. What to read out of it:
 
 - `agent.pane.awaiting` is `trust_prompt`. This is the normal
-  outcome of a first start in a directory, not a failure. All five
-  harnesses stop on something the first time.
+  outcome of a first start in a directory, not a failure. Every
+  harness stops on something the first time: on the trust question
+  if the directory is new to it, or on a login or provider question
+  if none is configured on the machine.
 - `agent.prompt_deferred` says the assignment has **not** reached
   the harness, and `delivery` is `send_keys`. You will deliver it
   in step 5.

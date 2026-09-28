@@ -200,11 +200,15 @@ itself.
 
 ## Read the first screen: the `awaiting` states
 
-Expect the first start in a directory to stop short of doing
-work. All five harnesses block there: `claude`, `codex` and
-`copilot` ask whether they may trust the directory, `agy` is not
-logged in, `opencode` has no provider configured. This is the
-normal case, not the exception.
+Expect the first start in a directory to stop short of doing work,
+and keep two causes apart. `claude`, `codex` and `copilot` ask
+whether they may trust the directory; that happens because the
+directory is new to them. `agy` asks for a login method and
+`opencode` for a provider whenever none is configured on the
+machine; that has nothing to do with the directory, and on a
+machine where both are set up their first screen is not known. Do
+not promise the user that a configured `agy` will come up ready.
+Either way, a first screen that is not ready is the normal case.
 
 After the boot wait, peeragent captures the visible pane and
 classifies it in the `awaiting` field of the `agent.pane`

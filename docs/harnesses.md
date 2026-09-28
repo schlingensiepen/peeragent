@@ -315,8 +315,9 @@ appeared as the first turn (`tested`):
 › Print the word ZEBRA and nothing else, then stop.
 ```
 
-Execution then stopped at the account's usage limit, which is not
-a delivery problem. `codex resume --last "<prompt>"` is
+The run then stopped at a usage limit of the account it was run
+with, which is a property of that account and not a delivery
+problem. `codex resume --last "<prompt>"` is
 `documented`. Delivering a prompt to codex by paste is
 `unverified`.
 
