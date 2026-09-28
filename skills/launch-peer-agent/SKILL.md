@@ -114,17 +114,30 @@ one. Establish it, then pass it.
 
 ## Write the assignment: the obligations
 
-peeragent starts a process. It builds no channel back to you.
-Everything the launched harness needs to know has to be in the
-assignment, because nothing else will tell it. Cover all of
-these:
+peeragent starts a process and then lets go of it. The launched
+harness lives on in its tmux session, unattended, after peeragent
+has returned, and nothing connects the two of you. `send` delivers
+a prompt that was left over from the start, and a read-only attach
+lets you watch; neither is a conversation. Everything the launched
+harness needs to know has to be in the assignment, because nothing
+else will tell it. Cover all of these:
 
 1. **The communication mechanism and how to reach it.** Protocol,
    address and credentials of the back channel belong in the
    assignment. Do not rely on the launched harness discovering
-   them. peeragent is orthogonal to the mechanism: it can be a
-   file both sides poll, a socket, a message bus, or anything
-   else.
+   them. peeragent is orthogonal to the mechanism and provides
+   none, so pick one and describe it. Two are worth recommending:
+   - **A folder both sides agree on.** Name the directory, say who
+     writes what under which file names, and ask for a first file
+     after the setup step. No software, no daemon, survives a crash
+     on either side, and a shared filesystem carries it across
+     users and hosts.
+   - **[simple-a2a](https://github.com/schlingensiepen/simple-a2a),**
+     a small agent-to-agent protocol, when file dropping is not
+     enough and you want addressed messages.
+
+   A socket, a message queue or an issue tracker work as well. What
+   does not work is leaving it out and hoping.
 2. **An explicit request to report back after initialization.**
    A sentence such as "after your first setup step, report back
    over the channel described above" is what separates a harness

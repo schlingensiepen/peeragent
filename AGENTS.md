@@ -139,6 +139,12 @@ condition. This is enforced, not advised: a prompt longer than 120
 effective characters is refused with exit code 2. Absolute paths are
 not counted, so the path to the task file is free.
 
+Remember what happens after the call: the agent you launched keeps
+running in its tmux session on its own, and nothing connects you to
+it any more. If you want to hear from it, establish a channel and
+describe it in the assignment. [README.md](README.md) names the two
+recommended ways.
+
 A complete session, including the trust question and the
 hand-over of a deferred prompt, is played through in
 [examples/quick-start.md](examples/quick-start.md).

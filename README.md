@@ -96,6 +96,39 @@ installed.
 The frame, the escaping rules and the exit codes are described in
 [docs/output-format.md](docs/output-format.md).
 
+## After the start: the agent lives on its own
+
+peeragent returns as soon as it has reported the first screen. The
+launched harness keeps running in its own tmux session, unattended
+and outliving the call. That is the point of the tool, and it is
+also the part that surprises people: there is no connection left
+between you and the agent.
+
+peeragent offers no way to talk to it afterwards. `peeragent send`
+hands over a launch prompt that could not be delivered at the start,
+and `tmux attach -r -t <session>` lets you watch read-only. Neither
+is a conversation, and nothing reports back to you on its own.
+
+So anyone who wants to exchange information with the launched agent
+has to establish a mechanism and describe it in the assignment,
+including how to reach it. The agent will not discover it. Two ways
+are worth recommending:
+
+- **A folder both sides agree on.** Name a directory in the
+  assignment, say who writes what into it and under which file
+  names, and ask for a first file after the setup step so you can
+  tell a working agent from a stuck one. It needs no software, it
+  survives a crash on either side, and a shared filesystem extends
+  it across users and hosts.
+- **[simple-a2a](https://github.com/schlingensiepen/simple-a2a).**
+  A small agent-to-agent protocol, for when file dropping is not
+  enough and you want addressed messages between agents.
+
+Either way the mechanism belongs in the assignment text, not in the
+launch prompt, which is limited to a pointer. `docs/cli.md` explains
+that limit, and `examples/task-file-template.md` has a section for
+the channel.
+
 ## Where to look
 
 | Document | For |

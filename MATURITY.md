@@ -145,7 +145,11 @@ the alternative. It happens before anything is copied.
 - There is no back channel. peeragent reports the first screen and
   returns; the launched harness keeps running in its tmux session.
   Anything the launched harness should report back has to be
-  arranged in the launch prompt itself.
+  arranged in the assignment itself. The two recommended ways, a
+  folder both sides agree on and simple-a2a, are in
+  [README.md](README.md) and
+  [examples/task-file-template.md](examples/task-file-template.md).
+  Neither is part of peeragent and neither is tested by it.
 - Model strings are passed through opaquely. peeragent does not
   validate them, and a wrong string surfaces as a harness error in
   the pane, not as a peeragent error.

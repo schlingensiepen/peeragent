@@ -328,7 +328,10 @@ versioned, re-read and referred to; a command line cannot.
     child processes and a `hint` with the read-only attach line
     `tmux attach -r -t '=<session>'`.
 
-The harness keeps running in tmux after peeragent returns.
+The harness keeps running in tmux after peeragent returns, on its
+ own and with no connection back to the caller. Talking to it later
+ needs a mechanism arranged in the assignment; the recommended ways
+ are in [../README.md](../README.md).
 peeragent never kills a session once the harness has been started.
 
 **Output**

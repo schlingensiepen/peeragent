@@ -22,6 +22,8 @@ will tell it.
 ## How to reach me
 <Protocol, address and credentials of the back channel.>
 <Whether to append or overwrite, and how often I read it.>
+<For the folder variant: the absolute directory, the file name you
+write, the file name I write, and the format of both.>
 
 ## Report back after setup
 When you have finished the setup steps below, <send exactly this
@@ -53,9 +55,23 @@ channel. Do not rely on the launched harness discovering them: it
 cannot see your session, and a harness that has no way to answer
 will not answer at all.
 
-peeragent is orthogonal to the mechanism. A file both sides read
-and append to, a socket, a message queue, an issue tracker — any
-of them work, and peeragent provides none of them.
+peeragent is orthogonal to the mechanism and provides none of them.
+Two are worth recommending.
+
+A **folder both sides agree on** is the simplest that works. Name an
+absolute directory, say who writes which file and in what format,
+and ask for a first file after the setup step. It needs no software,
+it leaves a readable trail, it survives a crash on either side, and
+on a shared filesystem it spans users and hosts. The weakness is
+that nobody is notified: both sides poll.
+
+**[simple-a2a](https://github.com/schlingensiepen/simple-a2a)** is a
+small agent-to-agent protocol for when file dropping is not enough
+and you want addressed messages between agents.
+
+A socket, a message queue or an issue tracker work too. Whatever you
+pick, it belongs in this file with its address and its credentials,
+not in the launch prompt, which holds only a pointer.
 
 ### 2. Ask for a report after initialization
 
