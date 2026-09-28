@@ -30,7 +30,7 @@ of the statement, not decoration.
 |---|---|
 | `tested` | Seen on a test host during a recorded run. The date is given. |
 | `documented` | From the harness's own `--help` or its official documentation. |
-| `observed on a test host` | From a single host inspection, without a test run behind it. |
+| `observed on a test host` | From a single host inspection, without a test run behind it. In prose this marker is often written out as a leading phrase, `On a test machine, ...`, so that the scope of the sentence stands before the claim and not after it. |
 | `unverified` | An assumption. Nothing in the sources backs it. |
 
 Harnesses update themselves. A version string can change between
@@ -76,11 +76,11 @@ character to type: see [`troubleshooting.md`](troubleshooting.md).
 
 ### Binary and version query
 
-The binary is `claude`. The native installer places a symlink at
-`~/.local/bin/claude` pointing into
-`~/.local/share/claude/versions/<version>`
-(`observed on a test host`); package installs put `claude` on
-`PATH` directly (`documented`).
+The binary is `claude`. On a test machine, the native installer
+had placed a symlink at `~/.local/bin/claude` pointing into
+`~/.local/share/claude/versions/<version>`; a second installation
+may well look different. Package installs put `claude` on `PATH`
+directly (`documented`).
 
 ```bash
 claude --version
@@ -296,10 +296,11 @@ Rollout files under
 `<home>/sessions/YYYY/MM/DD/rollout-<timestamp>-<uuid>.jsonl`
 with an index `<home>/session_index.jsonl`; `<home>` is
 `CODEX_HOME` if set and `~/.codex` otherwise (`documented`). The
-store is global, not namespaced per directory. A thread index
+store is global, not namespaced per directory. On a test machine
+running codex-cli 0.147.0, there was a thread index
 `<home>/state_5.sqlite` with a `threads` table holding `id`,
-`rollout_path`, `cwd` and `recency_at` was
-`observed on a test host` running codex-cli 0.147.0. peeragent
+`rollout_path`, `cwd` and `recency_at`. Another version may name
+or shape it differently. peeragent
 decides whether a store exists for a path by looking for the
 token `"cwd":"<path>"` in a rollout file.
 
@@ -528,9 +529,9 @@ missing.
 
 ### Binary and version query
 
-The binary is `opencode`; the installer script puts it in
-`~/.local/bin/opencode` (`observed on a test host`). There are no
-companion binaries.
+The binary is `opencode`. On a test machine, the installer script
+had put it in `~/.local/bin/opencode`. There are no companion
+binaries.
 
 ```bash
 opencode --version
@@ -704,11 +705,12 @@ when you resume copilot.
 
 One directory per session at `<home>/session-state/<uuid>/`
 containing a `workspace.yaml`; `<home>` is `COPILOT_HOME` if set
-and `~/.copilot` otherwise (`documented`). The fields `id`, `cwd`,
-`git_root`, `repository` and `branch` inside that file were
-`observed on a test host`. An index `<home>/session-store.db`, a
-SQLite database with a `sessions` table and an index on `cwd`, was
-also `observed on a test host`. peeragent decides whether a store
+and `~/.copilot` otherwise (`documented`). On a test machine, that
+file held the fields `id`, `cwd`, `git_root`, `repository` and
+`branch`, and there was an index
+`<home>/session-store.db`, a SQLite database with a `sessions`
+table and an index on `cwd`. Neither layout is documented, so
+neither is promised. peeragent decides whether a store
 exists for a path by reading the `cwd:` line of those YAML files.
 
 ### Prompt delivery
