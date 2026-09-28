@@ -65,16 +65,18 @@ this directory is the form to copy.
 
 ```bash
 cat > /srv/project/.peeragent-prompt.txt <<'EOF'
-Read /srv/project/TASK.md and carry out the assignment described
-there. Do the setup steps and the endpoint only, then stop and
-append your report as described in that file.
+Read /srv/project/TASK.md and do what it says. The setup steps
+and the endpoint only, then stop and report as that file says.
 EOF
 ```
 
-Why not put the assignment in the prompt directly: the text above
+Why not put the assignment in the prompt directly: the assignment
 contains quotes, braces and newlines, and for two of the five
 harnesses the prompt travels as a command-line argument, where it
 would be visible to every user of the host in the process list.
+peeragent also refuses it. A prompt above 120 effective characters
+ends in exit code 2 before anything starts; absolute paths are not
+counted, so the pointer above spends 104 of the 120.
 
 ## Step 3: start the harness
 

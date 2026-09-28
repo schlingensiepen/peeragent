@@ -223,7 +223,7 @@ Not every step occurs in every subcommand.
 It is `true` on every `error`, on every `fatal`, and on those `warn`
 messages that a human has to know about: a harness waiting for a
 trust confirmation, a resume on a harness where resume is only
-experimental, a prompt file above 100 KiB, a missing session store
+experimental, a missing session store
 in `duplicate`, a log file that could not be created, a missing
 process listing.
 

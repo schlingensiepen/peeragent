@@ -145,7 +145,16 @@ is a copy-ready form of these obligations.
 
 ## Use a pointer prompt, not the assignment itself
 
-For any substantial assignment this is not a style preference:
+This is not a style preference, and it is not left to you:
+peeragent refuses a prompt above 120 effective characters with exit
+code 2, before anything is started. Absolute paths do not count
+towards that length, so naming the task file and the place to report
+costs you nothing; the words between them are the budget. The same
+check applies when you deliver a deferred prompt later, so there is
+no way around it. The counting rule is in
+[`docs/cli.md`](../../docs/cli.md).
+
+What to do with it:
 
 1. Write the full assignment into a file in the target working
    directory — `TASK.md`, or a name that says what it is. Version

@@ -25,6 +25,12 @@ yet; what is verified and what is not is recorded in
   harness. A prompt that could not be delivered because the harness
   was waiting for an answer is reported as deferred, with the
   command that delivers it afterwards.
+- Launch prompts are limited to 120 effective characters, and
+  absolute paths are not counted towards that. A longer prompt is
+  refused with exit code 2 and a hint to write the assignment into a
+  file in the working directory and pass a short prompt that points
+  at it. The limit applies to a deferred delivery as well, so it
+  cannot be bypassed.
 - `peeragent send` hands a launch prompt to a session that is
   already running.
 - `peeragent duplicate` copies a working directory together with the

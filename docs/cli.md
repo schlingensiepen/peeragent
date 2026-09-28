@@ -241,11 +241,42 @@ error, which is why the choice is worth a deliberate moment.
    No harness carries that value in this version; the step is
    provision for later handlers.
 7. With `--prompt-file`: the file exists, is regular, is readable
-   and is not empty, otherwise `fatal` (2).
-   Above 100 KiB a `warn` follows.
-   Above 120 KiB on a harness that receives the prompt as a
-   command-line argument it is `fatal` (2), because of the argument
-   length limit.
+   and is not empty, otherwise `fatal` (2). Its content decodes as
+   UTF-8, otherwise `fatal` (2). Its effective length is at most 120
+   characters, otherwise `fatal` (2) with the hint to write the
+   assignment into a file and point at it. The rule is the same for
+   `send`; see below for how the length is counted.
+
+**How the prompt length is counted, and why it is limited**
+
+A launch prompt is a pointer, not the assignment. peeragent
+enforces that: above 120 effective characters the call is refused
+with exit code 2 before anything is started.
+
+Effective length is counted like this, identically in both
+implementations:
+
+1. The file content is decoded as UTF-8.
+2. Whitespace at both ends is removed.
+3. The rest is split on whitespace.
+4. Every token that begins with `/` is dropped.
+5. The remaining tokens are joined with one space each.
+6. The Unicode code points of that string are counted.
+
+Absolute paths therefore cost nothing. A pointer may name the task
+file and the place to write the report without spending budget, and
+a deep directory tree does not eat into the text. There is no flag
+that lifts the limit. A prompt that does not fit belongs in a file:
+write it into the working directory and point at it, as
+[../examples/prompt-file-template.md](../examples/prompt-file-template.md)
+shows.
+
+The reasons are practical. Two of the five harnesses receive the
+prompt as a command-line argument, where it is visible to every
+user of the host in the process list. A long prompt is also out of
+sight as soon as the pane has scrolled on, while a task file can be
+read again at any time, including on request. And a file can be
+versioned, re-read and referred to; a command line cannot.
 
 **Flow after a passed preflight**
 
@@ -359,7 +390,8 @@ peeragent send --session <name> --prompt-file <path>
    `warn` and not a `fatal`, because `send` does not need the
    binary.
 4. The prompt file is checked as in `start agent` step 7,
-   otherwise `fatal` (2).
+   otherwise `fatal` (2). The length limit applies here too:
+   without it, `send` would be the way around the pointer rule.
 5. The pane is not dead, otherwise `fatal` (2).
 
 **Handler determination**

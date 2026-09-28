@@ -12,18 +12,19 @@ here are tested today.
 ## The template
 
 ```text
-Read <ABSOLUTE PATH TO THE TASK FILE> and carry out the assignment
-described there. <SCOPE: which part, or all of it.> <STOP: when to
-stop and how to report back.>
+Read /ABSOLUTE/PATH/TO/TASK.md and do what it says.
+<SCOPE: which part.> <STOP: when to stop, and where to report.>
 ```
 
 ## Filled in
 
 ```text
-Read /srv/project/TASK.md and carry out the assignment described
-there. Do the setup steps and step 1 only, then stop and append
-your report to /srv/project/.reports/agent-out.md.
+Read /srv/project/TASK.md and do what it says. Step 1 only,
+then stop and append your report to /srv/project/.reports/agent-out.md.
 ```
+
+That is 74 effective characters, well inside the limit described
+below.
 
 Save it next to the task file and pass it by absolute path:
 
@@ -49,7 +50,12 @@ peeragent start agent \
 
 ## Rules
 
-- Keep it short. A few lines is right; a screen is not.
+- **Keep it short, and it is not a matter of taste.** peeragent
+  refuses a prompt above 120 effective characters with exit code 2.
+  Absolute paths do not count towards that, so the two paths above
+  are free; only the words between them are. The counting rule is in
+  [`../docs/cli.md`](../docs/cli.md). If your text does not fit, it
+  is not a pointer any more and belongs in the task file.
 - No confidential content. Two of the five harnesses receive the
   prompt as a command-line argument, where it is visible to other
   users of the host in the process list. The task file is not.

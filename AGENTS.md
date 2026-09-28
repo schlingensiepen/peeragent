@@ -135,7 +135,9 @@ session history one level too high.
 
 Write the full assignment into a file in that directory, and pass
 only a short prompt that points at that file, with a scope and a stop
-condition.
+condition. This is enforced, not advised: a prompt longer than 120
+effective characters is refused with exit code 2. Absolute paths are
+not counted, so the path to the task file is free.
 
 A complete session, including the trust question and the
 hand-over of a deferred prompt, is played through in
