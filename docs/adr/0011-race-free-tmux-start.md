@@ -16,8 +16,7 @@ late. If the harness exits within the first moments, because a
 flag was wrong or a dependency was missing, the pane closes, the
 session closes with it, and the error message is gone before
 anything can read it. The tool then reports that it created a
-session it can no longer find. The failure was reproduced on a
-current version of the multiplexer.
+session it can no longer find.
 
 ## Decision
 

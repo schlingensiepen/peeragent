@@ -32,7 +32,8 @@ here.
 ## Requirements
 
 - Linux, or WSL2 on Windows. No macOS support.
-- `tmux` 3.2 or newer, and `git`.
+- `tmux` 3.2 or newer, and `ps`.
+- `git`, but only if you use `--git-repo`.
 - Either Python 3.11 or newer (standard library only), or bash 4.4
   or newer with GNU coreutils, findutils and procps.
 - At least one of the supported harnesses: `claude`, `codex`, `agy`,

@@ -22,7 +22,7 @@ first group stops the installation.
 | Requirement | Check | Expected |
 |---|---|---|
 | tmux 3.2 or newer | `tmux -V` | a version string, for example `tmux 3.5a` |
-| git | `git --version` | a version string |
+| `ps` | `ps --version` | a version string |
 | A harness | `claude --version`, `codex --version`, `agy --version`, `opencode --version`, `copilot --version` | at least one of them answers |
 
 The second group depends on which implementation you choose.
@@ -33,14 +33,16 @@ The second group depends on which implementation you choose.
 | bash 4.4 or newer | `bash --version` | first line reports 4.4 or higher |
 | GNU coreutils, findutils, procps | `realpath --version && timeout --version && stat --version && find --version && ps --version` | each answers |
 
-The bash implementation uses `realpath`, `timeout`, `date`,
-`stat`, `find` and `ps`. It needs no `jq`, no `sqlite3`, no
-`uuidgen` and no `iconv`. The Python implementation uses the
-standard library only.
+The bash implementation uses `realpath`, `timeout`, `date`, `stat`
+and `find`. It needs no `jq`, no `sqlite3`, no `uuidgen` and no
+`iconv`. The Python implementation uses the standard library only.
+Both need `ps` from procps, which is why it stands in the first
+group.
 
-`git` is a requirement of the tool as a whole even though a run
-only needs it when you ask peeragent to initialize a repository
-in the working directory.
+`git` is **not** a requirement for installing or for a normal run.
+It is checked only when you ask peeragent to initialize a
+repository in the working directory, and only then does a missing
+git stop anything.
 
 peeragent does not install, update or configure the harnesses.
 Install those from their own vendors:
@@ -163,7 +165,7 @@ Claude Code reads skills from `~/.claude/skills/`. Copy the whole
 directory:
 
 ```bash
-cp -a skills/launch-peer-agent ~/.claude/skills/
+cp -r skills/launch-peer-agent ~/.claude/skills/
 ```
 
 The skill becomes available in a new session. It bundles no code;

@@ -60,13 +60,15 @@ peeragent start agent \
   prompt as a command-line argument, where it is visible to other
   users of the host in the process list. The task file is not.
 - Plain text, UTF-8, and not empty. peeragent rejects an empty or
-  unreadable prompt file before starting anything.
+  unreadable file before starting anything, and it rejects one whose
+  content does not decode as UTF-8, because the length count needs
+  the decoded text.
 - A trailing newline is harmless. peeragent strips trailing
   newlines before pasting into a harness that takes the prompt by
   keystrokes, so the paste does not submit early.
 - No templating. peeragent does not substitute anything in this
-  file; it reads it for size and passes the content through
-  unchanged.
+  file; it reads it to count the length and passes the content
+  through unchanged.
 
 ## When the prompt file may hold the whole thing
 

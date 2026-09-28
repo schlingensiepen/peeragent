@@ -161,7 +161,7 @@ Supported (`ok`) and tested on 2026-09-16. Copying the working
 directory and copying the project directory of the session store
 is enough: no identifier is renamed and no path is rewritten. The
 `cwd` field inside the copied session file stays at the old path
-and the harness ignores it (`tested`). A test in the copy answered
+and the harness ignores it (`tested` 2026-09-16). A test in the copy answered
 from the session context and did not re-read a deliberately
 changed file, which is what makes the copy useful.
 
@@ -197,8 +197,8 @@ key sequence for this: the login happens outside peeragent.
 
 **Busy.** The marker is `· thinking)`, as in the spinner line
 `✢ Pouncing… (1s · thinking)` (`tested` 2026-09-23). The second
-marker `esc to interrupt` is `documented` and did not appear in
-the test.
+marker `esc to interrupt` is `unverified`: it did not appear in the
+test, and no source establishes it.
 
 **Ready.** A line that is exactly `❯` once whitespace is stripped
 (`tested`; Claude Code writes `❯ ` with a trailing space). The
@@ -528,8 +528,8 @@ missing.
 ### Binary and version query
 
 The binary is `opencode`; the installer script puts it in
-`~/.local/bin/opencode` (`tested`). There are no companion
-binaries.
+`~/.local/bin/opencode` (`observed on a test host`). There are no
+companion binaries.
 
 ```bash
 opencode --version
@@ -780,7 +780,7 @@ the pane and peeragent reports `unknown`.
 
 **Process picture.** The short process name is `MainThread`; the
 command line is the binary path under a platform-specific
-directory (`tested`). The short name is not a reliable way to
+directory (`tested` 2026-09-23). The short name is not a reliable way to
 recognise the harness.
 
 ### Installing the GitHub Copilot CLI

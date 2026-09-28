@@ -160,7 +160,7 @@ Harnesses that are not installed stay invisible; no
 
 **Output**
 
-The preflight `info` per checked harness, then `model.available` per
+The preflight `info` per installed harness, then `model.available` per
 model with `harness`, `key`, `description` and `catalog_updated`, in
 catalog order.
 
@@ -351,8 +351,8 @@ session standing.
 
 **Prompt files**
 
-peeragent reads the prompt file for its size and for removing
-trailing newlines before a paste.
+peeragent reads the prompt file to count its effective length and
+to remove trailing newlines before a paste.
 There is no templating and no preprocessing.
 A prompt that is passed on the command line is visible in the
 process list of the host, so a prompt with confidential content

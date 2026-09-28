@@ -27,7 +27,8 @@ parser.
 The Bash implementation uses the shell and the command-line tools
 of an ordinary Linux userland: coreutils for path resolution,
 timeouts, dates and file metadata, findutils, and the process
-tools. Beyond that it needs tmux and git. It does not use a JSON
+tools. Beyond that the runtime needs tmux, and git only for the
+optional repository setup. It does not use a JSON
 processor, a SQLite client, a UUID generator or a character-set
 converter. The tools named are those of a GNU userland rather than
 a strictly minimal POSIX set, because path resolution, timeouts

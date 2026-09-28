@@ -247,8 +247,10 @@ to be extended instead.
 
 `tools/peeragent.py` requires Python 3.11 or newer and uses the
 standard library only: no third-party packages. `tools/peeragent`
-requires Bash 4.4 or newer with GNU coreutils, findutils and
-procps, tmux 3.2 or newer, and git. It uses no `jq`, no `sqlite3`,
+requires Bash 4.4 or newer with GNU coreutils and findutils. Both
+implementations need tmux 3.2 or newer and `ps` from procps for the
+runtime, and git only when `--git-repo` is used. It uses no `jq`,
+no `sqlite3`,
 no `uuidgen` and no `iconv`, and it sets a UTF-8 C locale.
 
 The Bash implementation never parses JSON. It may match literal,

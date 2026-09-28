@@ -159,8 +159,8 @@ is a copy-ready form of these obligations.
 ## Use a pointer prompt, not the assignment itself
 
 This is not a style preference, and it is not left to you:
-peeragent refuses a prompt above 120 effective characters with exit
-code 2, before anything is started. Absolute paths do not count
+peeragent refuses a prompt above 120 effective characters before
+anything is started. Absolute paths do not count
 towards that length, so naming the task file and the place to report
 costs you nothing; the words between them are the budget. The same
 check applies when you deliver a deferred prompt later, so there is
@@ -250,9 +250,10 @@ covers the whole git root, not just the folder you pointed at. If
 the folder sits inside a larger repository, you are trusting the
 repository. Say so to the user rather than answering silently.
 
-A trust answer is remembered per directory for `claude`, `codex`
-and `copilot`, so the second start in the same directory usually
-goes straight to work.
+A trust answer is remembered per directory for `claude` and
+`codex`, so the second start in the same directory usually goes
+straight to work. `copilot` asks again unless you answered with its
+remembering option, which peeragent does not choose for you.
 
 For `agy` and `opencode` no confirmed ready marker exists yet, so
 a healthy first screen from them may still be reported as

@@ -1,7 +1,12 @@
 # 0009. Pointer prompt and task file
 
-- Status: Accepted
+- Status: Superseded by [0016](0016-enforce-pointer-prompt.md)
 - Date: 2026-09-17
+
+The separation of assignment and prompt below still holds. What no
+longer holds is the paragraph saying the tool enforces nothing, and
+the alternative rejected at the end: record 0016 makes the pointer
+prompt a check in the tool.
 
 ## Context
 

@@ -71,7 +71,7 @@ commands are built on; that is the next table.
 |---|---|---|---|---|---|
 | `claude` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-23 | `--continue`, `tested` 2026-09-23 | supported, `tested` 2026-09-16 |
 | `codex` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-23 | `resume --last`, `documented` | refused; store `observed` |
-| `agy` | `tested` 2026-09-23 | `tested` 2026-08-17 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `unverified` |
+| `agy` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `unverified` |
 | `opencode` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `observed` |
 | `copilot` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `tested` 2026-09-23 | `--continue`, `documented` | refused; store `observed` |
 
@@ -150,6 +150,10 @@ the alternative. It happens before anything is copied.
   [README.md](README.md) and
   [examples/task-file-template.md](examples/task-file-template.md).
   Neither is part of peeragent and neither is tested by it.
+- A launch prompt is limited to 120 effective characters, where
+  absolute paths do not count. A longer prompt is refused before
+  anything starts. The limit is specified and not yet exercised by a
+  run, so it is `unverified` like the rest of the command surface.
 - Model strings are passed through opaquely. peeragent does not
   validate them, and a wrong string surfaces as a harness error in
   the pane, not as a peeragent error.

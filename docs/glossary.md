@@ -135,6 +135,11 @@ tested is recorded in [MATURITY.md](../MATURITY.md).
 - **trust_answer** — the handler constant holding the key sequence
   that answers a trust question with yes. peeragent names it in a
   hint and does not send it itself.
+- **conformance test** — the test that runs both implementations
+  over the same case and compares their output after normalising the
+  values that cannot match, such as timestamps and process ids. It
+  compares them against each other, not against a stored expected
+  output, so neither implementation is the reference.
 - **two implementations** — `tools/peeragent.py` in Python and
   `tools/peeragent` in Bash, call-compatible and structurally
   equivalent in output and log, each a single file, compared

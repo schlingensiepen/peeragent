@@ -128,7 +128,9 @@ The exit code is the quickest classifier; the full list is in
 | Harness found, version unknown, plus a warning | 0 | The version query timed out or failed although the binary exists. | Run `<binary> --version` by hand. A self-updating launcher may be busy installing; OpenCode installs a package at startup. |
 | The exited message with an exit status | 4 | The harness was no longer alive after the boot wait. | Read the reported lines: they come from the scrollback and usually carry the harness's own error. The session was kept, so attach and look. |
 | Folder is already a git repository | 2 | You asked for a repository to be initialised in a folder that already has one. | Drop the repository option. |
-| Prompt file missing, unreadable or empty | 2 | The path is wrong, or the file has no content. | Check the path. A prompt file must be non-empty UTF-8. Size limits are in [`cli.md`](cli.md). |
+| Prompt file missing, unreadable or empty | 2 | The path is wrong, or the file has no content. | Check the path. A prompt file must be non-empty UTF-8. |
+| Prompt too long | 2 | The prompt holds more than 120 effective characters, so it is an assignment and not a pointer. | Write the assignment into a file in the working directory and pass a short prompt that points at it. Absolute paths do not count towards the length; the counting rule is in [`cli.md`](cli.md). |
+| Prompt file not valid UTF-8 | 2 | The file is in another encoding, or it is not text at all. | Convert it to UTF-8. The length count needs the decoded text. |
 | Duplicate refused before anything was copied | 2 | Only Claude Code sessions can be duplicated. The other four keep their sessions in a database or in an unknown layout. | Use the harness-native way named in the hint. |
 | Session store for destination already exists | 1 | A previous duplicate already created the destination's session store. | Choose a different destination, or remove the stale store yourself. |
 | Destination exists and differs from source | 1 | The destination directory is not a copy of the source. peeragent refuses rather than merge. | Choose an empty destination, or remove the existing one. |

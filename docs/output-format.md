@@ -309,7 +309,7 @@ What to do with each state in practice is in
 |---|---|---|
 | `0` | Success, also with warnings or single errors | A recognized trust prompt, a deferred prompt, `list harness` without a single installed harness |
 | `1` | Runtime failure | `git init` failed, session creation failed, a session-name collision that persisted over five attempts, the destination session store already exists, the cheap check on the destination failed, the paste in `send` failed |
-| `2` | Argument validation | Unknown flag or subcommand, unknown harness key, missing folder, `.git` conflict with `--git-repo`, prompt file missing, empty or too large, duplication not supported for this harness, `--no-log` together with `--log-file`, missing session in `send`, `--boot-wait` or `--wait` on the wrong subcommand |
+| `2` | Argument validation | Unknown flag or subcommand, unknown harness key, missing folder, `.git` conflict with `--git-repo`, prompt file missing, empty, not decodable as UTF-8 or longer than 120 effective characters, duplication not supported for this harness, `--no-log` together with `--log-file`, missing session in `send`, `--boot-wait` or `--wait` on the wrong subcommand |
 | `3` | A tool or harness is not installed | tmux missing, a known harness missing, git missing with `--git-repo` |
 | `4` | The harness was no longer alive after the boot wait | `agent.exited` |
 | `130` | SIGINT | Interruption during the boot wait or a wait; the tmux session is left standing |
