@@ -178,6 +178,20 @@ Harness-specific pictures worth knowing:
   current directory, continuing falls back to the globally most
   recent session (documented), which may belong to another
   directory. peeragent warns about this when you resume copilot.
+- **The screen looks ready but the harness is not logged in.**
+  GitHub Copilot CLI shows `Please use /login to sign in to use
+  Copilot` as a status line above the input while the input line
+  itself is present (`tested` 2026-09-28). peeragent reports
+  `auth_prompt` for this, because an authentication question
+  outranks a ready line, but if you read the pane yourself the
+  screen can fool you: it has a prompt and it will never answer.
+  The login happens outside peeragent.
+- **An answered question is followed by another one.** The two
+  causes are independent, so they can queue up: Codex CLI with no
+  credentials asks to sign in first and about the directory
+  afterwards, GitHub Copilot CLI the other way round (`tested`
+  2026-09-28). After answering, capture again instead of assuming
+  the harness is ready.
 - **The peer agent works in the wrong directory.** This one
   reports no error at all, which is what makes it expensive. The
   symptoms: the harness says it cannot find the task file although

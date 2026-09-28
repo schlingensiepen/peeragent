@@ -107,12 +107,17 @@ Per harness, in detail:
   configured. Its wrapper may run a package install during startup,
   which is why a version query can time out. The prompt hand-over by
   pasting has never been run.
-- `copilot` blocks with a trust question before anything else and,
-  on a host where credentials come from the environment, shows no
-  login dialog at all. Pasting a three-line prompt works; a trailing
-  newline in the prompt file does not submit it, so peeragent always
-  sends the confirming key itself. A paste that arrives while the
-  harness is busy is buffered and processed after the running turn.
+- `copilot` blocks with a trust question before anything else, and
+  the question covers the working directory rather than the
+  repository it lies in (`tested` 2026-09-28). With no credentials in
+  place it then shows `Please use /login to sign in to use Copilot`
+  as a status line above the input, while the input line itself is
+  present (`tested` 2026-09-28); peeragent reports that as an
+  authentication question and not as ready. Pasting a three-line
+  prompt works; a trailing newline in the prompt file does not submit
+  it, so peeragent always sends the confirming key itself. A paste
+  that arrives while the harness is busy is buffered and processed
+  after the running turn.
 
 Input-prompt markers are established for `claude` and `copilot`
 only. For `codex`, `agy` and `opencode` there is no reliable marker
@@ -156,6 +161,22 @@ the alternative. It happens before anything is copied.
   [README.md](README.md) and
   [examples/task-file-template.md](examples/task-file-template.md).
   Neither is part of peeragent and neither is tested by it.
+- Answering one question does not mean the harness is ready. The
+  causes are independent and can queue: a harness without
+  credentials may ask to sign in first and about the directory
+  afterwards, or the other way round (`tested` 2026-09-28 for two
+  harnesses). Capture again after each answer.
+- **What each harness accepts on its command line is under review.**
+  The help output of the installed binaries names a way to pass an
+  initial prompt to an interactive session for three harnesses that
+  this document lists as paste-only, and a way to pass the working
+  directory for three harnesses (`tested` 2026-09-28, in the sense
+  that the flags exist and their help text says so). Whether they
+  behave as their help promises has not been established: the two
+  runs that would have shown it stopped at an authentication gate.
+  Until a run settles it, the per-harness rows above stand as they
+  are, and the possibility that prompt delivery is simpler than
+  described is `unverified`.
 - A launch prompt is limited to 120 effective characters, where
   absolute paths do not count. A longer prompt is refused before
   anything starts. The limit is specified and not yet exercised by a

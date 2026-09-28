@@ -263,6 +263,19 @@ For `agy` and `opencode` no confirmed ready marker exists yet, so
 a healthy first screen from them may still be reported as
 `unknown`. Show it to the user instead of assuming failure.
 
+**One answer is not always enough.** The causes are independent, so
+the questions can queue: a harness with no credentials may ask to
+sign in first and about the directory afterwards, or the other way
+round. After you answer one, read the screen again rather than
+assuming the harness is now ready.
+
+**A ready line does not prove the harness can work.** With GitHub
+Copilot CLI an authentication notice sits above the input while the
+input line is present. peeragent classifies that as an
+authentication question and not as ready, which is what you act
+on — but if you look at the pane yourself, do not be fooled by the
+prompt you see there.
+
 ## Deliver a deferred prompt with `send`, and only then
 
 If peeragent could not get the prompt into the harness, it emits

@@ -755,7 +755,34 @@ tmux send-keys -t "=<session>:" 1 Enter
 ```
 
 `1` trusts this once, `2` trusts and remembers the folder, `3`
-cancels. peeragent's hint names `1`.
+cancels. peeragent's hint names `1`, so the answer is not
+remembered and the question returns on the next start in that
+folder. The box names the working directory, not the repository it
+lies in (`tested` 2026-09-28), which differs from the Codex CLI.
+
+**Auth notice.** With no credentials in place, the line
+`Please use /login to sign in to use Copilot` appears (`tested`
+2026-09-28). Two things about it matter. It is a **status line above
+the input, not a dialog**, so looking for a box misses it. And it
+stands **at the same time as the `❯` line**, so a screen that looks
+ready belongs to a harness that cannot do anything until someone
+logs in:
+
+```text
+● MCP Servers reloaded: 0 servers connected
+Please use /login to sign in to use Copilot
+ <folder> [⎇ main]
+───────────────────────────────────────────
+❯
+```
+
+peeragent therefore reports `auth_prompt` here, not `ready`: the
+waiting states have a precedence, and an authentication question
+outranks a ready line.
+
+**Two gates in sequence.** The trust box came first and the auth
+notice after it (`tested` 2026-09-28). An answered question does not
+mean the harness is ready, so capture again rather than assume.
 
 **Busy.** The marker is `esc interrupt`, from the status line
 (`tested` 2026-09-23):
