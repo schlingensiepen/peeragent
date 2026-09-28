@@ -1,152 +1,137 @@
 # peeragent
 
+If you are an AI agent and want to acquire this capability for
+yourself, start with [AGENTS.md](AGENTS.md).
+If you are a human evaluating the tool, read on.
+
 peeragent is a small Linux command-line tool that launches a
-coding-agent harness inside a tmux session and reports the first
-screen back in a structured form. It can also duplicate a working
-directory together with the harness's session history, and it lists
-installed harnesses, available git templates and known models.
+coding-agent harness in its own tmux session and reports the first
+screen back in a structured form.
+It classifies what the screen shows, so the caller knows whether the
+harness is ready, busy, or waiting for a trust, login or provider
+answer.
+A launch prompt that was left undelivered can be handed over
+afterwards with `peeragent send`, and a working directory can be
+duplicated together with the harness session history.
+It also lists the installed harnesses and the models known per
+harness.
 
-It is a building block for cross-platform agent communication: an
-agent that runs in one harness can start another agent in a second
-harness, read a machine-readable account of what happened, and take
-it from there. peeragent itself knows nothing about fleets, teams or
-identities. It starts a harness, tells you what it saw, and gets out
-of the way.
+## Maturity
 
-peeragent ships together with a Claude Code skill,
-`launch-peer-agent`, described in [`SKILL.md`](SKILL.md).
-
-## Status
-
-Pre-release. This README describes the intended command-line
-contract; the two implementations under `tools/`, the documentation
-under `docs/`, the tests and the examples are not yet in this
-repository. Until they land, the skill and this description are the
-deliverables.
-
-## Supported harnesses
-
-| Key | Binary | Harness |
-|---|---|---|
-| `claude` | `claude` | Claude Code |
-| `codex` | `codex` | OpenAI Codex CLI |
-| `agy` | `agy` | Google Antigravity CLI |
-| `opencode` | `opencode` | OpenCode |
-| `copilot` | `copilot` | GitHub Copilot CLI |
-
-peeragent detects which of these are installed and passes their
-version strings through verbatim. It does not install, update or
-configure any harness.
+peeragent 0.1.0 is a pre-release: the command-line programs are not
+in this repository yet, so nothing described below can be run today,
+and of the five supported harnesses only `claude` is covered by
+tests across detection, launch, prompt delivery, resume and
+duplicate.
+This document describes the contract the implementation has to meet.
+What is tested, what rests on harness documentation and what is
+still an assumption is listed per command and per harness in
+[MATURITY.md](MATURITY.md); read it before you rely on any statement
+here.
 
 ## Requirements
 
-- Linux (native or WSL2). macOS and native Windows are not targets.
-- `tmux`, `git` and Python 3 for the Python implementation.
-- `gh` (GitHub CLI) for git-template discovery and GitHub
-  repository creation. Without `gh`, peeragent warns and continues
-  with reduced functionality.
-- No third-party Python packages. The Python implementation uses
-  the standard library only; the Bash implementation uses POSIX
-  shell and standard tools.
+- Linux, or WSL2 on Windows. No macOS support.
+- `tmux` 3.2 or newer, and `git`.
+- Either Python 3.11 or newer (standard library only), or bash 4.4
+  or newer with GNU coreutils, findutils and procps.
+- At least one of the supported harnesses: `claude`, `codex`, `agy`,
+  `opencode`, `copilot`. peeragent detects them and passes their
+  version strings through unchanged; it does not install, update or
+  configure them.
 
-## Command overview
+## Installation
 
-```
-peeragent list harness                 # installed harnesses
-peeragent list git-templates           # discovered git templates
-peeragent list models [--harness KEY]  # static model catalogs
-peeragent start agent --folder DIR --harness KEY
-                      [--prompt-file FILE] [--model NAME] [--resume]
-                      [--git-template KEY | --git-repo | --git-repo-remote URL]
-peeragent duplicate --from DIR --to DIR --harness KEY
+```bash
+git clone https://github.com/schlingensiepen/peeragent.git
+install -m 0755 peeragent/tools/peeragent.py ~/.local/bin/peeragent
 peeragent version
 ```
 
-Global flags: `--json` (JSONL output), `--no-log`, `--log-file PATH`,
-`--verbose`, `--help`.
+The Bash program `tools/peeragent` is call-compatible and can be
+installed the same way.
+Path variants, file permissions, harness-side skill installation and
+removal are covered in [docs/install.md](docs/install.md).
 
-`start agent` creates a tmux session named
-`peeragent-<folder>-<harness>-<8 hex chars>`, waits for the harness
-to boot, captures the visible pane and classifies what the harness
-is waiting for: `ready`, `trust_prompt`, `auth_prompt`,
-`provider_prompt`, `error` or `unknown`. The harness keeps running
-in tmux after peeragent returns.
+## Commands
 
-`duplicate` copies a working directory and the harness's session
-storage so that the copy can be resumed independently. Support is
-graded per harness: `claude` is tested and supported, `codex` and
-`copilot` are experimental, `agy` and `opencode` are refused.
+| Command | Purpose |
+|---|---|
+| `peeragent list harness` | List the supported harnesses with detection state and version |
+| `peeragent list models` | List the models known per harness from the static catalogs |
+| `peeragent start agent` | Launch a harness in a tmux session, report the first screen, deliver the launch prompt |
+| `peeragent send` | Hand a launch prompt to a running session afterwards |
+| `peeragent duplicate` | Copy a working directory together with the harness session history |
+| `peeragent version` | Print the program version |
+
+Flags, preflight checks and exit codes are in
+[docs/cli.md](docs/cli.md); the message types and their fields are
+in [docs/output-format.md](docs/output-format.md).
 
 ## Output
 
-By default peeragent prints human-readable lines. With `--json` it
-emits one JSON object per line, wrapped so that the whole stream is
-also a valid JSON array:
+Plain text is the default, one line per message.
+With `--json`, every message is a single-line JSON object inside a
+pseudo-array frame:
 
-```
+```json
 [
-{"type":"info","msg":"tmux found: 3.5a","user_relevant":false}
+{"type":"harness.detected","key":"claude","version":"2.1.278 (Claude Code)","description":"Claude Code CLI (Anthropic)","path":"/usr/local/bin/claude","user_relevant":false}
 ,
-{"type":"harness.detected","key":"claude","version":"2.1.273 (Claude Code)","description":"Claude Code CLI","path":"/usr/local/bin/claude"}
+{"type":"harness.detected","key":"codex","version":"codex-cli 0.147.0","description":"OpenAI Codex CLI","path":"/usr/local/bin/codex","user_relevant":false}
 ,
-{"type":"agent.pane","session":"peeragent-myproject-claude-a3f1c9e2","awaiting":"ready","lines":["Welcome to Claude Code"]}
+{"type":"harness.missing","key":"agy","description":"Google Antigravity CLI","user_relevant":false}
+,
+{"type":"harness.detected","key":"opencode","version":null,"description":"OpenCode (anomalyco)","path":"/usr/local/bin/opencode","user_relevant":false}
+,
+{"type":"warn","msg":"opencode --version timed out after 10s","user_relevant":true,"hint":"the opencode wrapper may be installing an update; retry or run 'opencode --version' manually"}
+,
+{"type":"harness.detected","key":"copilot","version":"GitHub Copilot CLI 1.0.88.","description":"GitHub Copilot CLI","path":"/usr/local/bin/copilot","user_relevant":false}
 ]
 ```
 
-Messages that need a human's attention carry `user_relevant: true`
-and a `hint` string. The Python and Bash implementations produce
-structurally equivalent streams: the same message types with the
-same field names and semantically equal values. A conformance test
-under `tests/conformance/` is planned to check this.
+A version query that times out yields `version: null` and a `warn`,
+as shown for `opencode` above; the harness still counts as
+installed.
+The frame, the escaping rules and the exit codes are described in
+[docs/output-format.md](docs/output-format.md).
 
-## Exit codes
+## Where to look
 
-| Code | Meaning |
+| Document | For |
 |---|---|
-| `0` | success, possibly with individual `error` messages |
-| `1` | preflight failure or unexpected error |
-| `2` | invalid command-line arguments |
-| `3` | required tool or harness not installed |
+| [AGENTS.md](AGENTS.md) | An agent that installs and verifies the tool for itself |
+| [MATURITY.md](MATURITY.md) | What is tested, what is not, and what is refused |
+| [docs/install.md](docs/install.md) | Installation in full, `PATH` variants, removal |
+| [docs/cli.md](docs/cli.md) | Every command, flag, preflight step and exit code |
+| [docs/output-format.md](docs/output-format.md) | Plain text templates, JSONL frame, message vocabulary, logs |
+| [docs/harnesses.md](docs/harnesses.md) | Per harness: arguments, session stores, waiting states, install hints |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Waiting states, common failures, reading the pane and the logs |
+| [docs/architecture.md](docs/architecture.md) | Layers, handler contract, the two implementations |
+| [docs/glossary.md](docs/glossary.md) | Terms used across these documents |
+| [docs/adr/README.md](docs/adr/README.md) | The decisions behind the design |
+| [skills/launch-peer-agent/SKILL.md](skills/launch-peer-agent/SKILL.md) | The Claude Code skill shipped with the tool |
+| [examples/quick-start.md](examples/quick-start.md) | One session from start to finish |
+| [CHANGELOG.md](CHANGELOG.md) | What changed per version |
 
-## Logging
-
-Every invocation writes one JSONL log file to
-`~/.local/state/peeragent/logs/` unless `--no-log` is given. The
-log contains everything the `--json` output contains plus
-`invocation`, `env`, `debug` and `timing` messages. Environment
-values whose key matches `TOKEN`, `KEY`, `SECRET`, `PASS`, `AUTH`
-or `CREDENTIAL` (case-insensitive) are redacted. There is no
-rotation and no bundling command; delete old files when they
-bother you.
-
-## Planned repository layout
-
-```
-README.md      this file
-SKILL.md       the launch-peer-agent skill for Claude Code
-LICENSE        Apache-2.0
-tools/         peeragent (Bash) and peeragent.py (Python)
-docs/          architecture, harness notes, output format, decisions
-tests/         unit tests and the conformance suite
-examples/      quick start and a prompt-file template
-```
+`tools/` and `tests/` are empty in this pre-release; see
+[MATURITY.md](MATURITY.md).
 
 ## Reporting issues
 
-Please report problems at
-<https://github.com/schlingensiepen/peeragent/issues>. Include:
+Use the issue tracker of
+https://github.com/schlingensiepen/peeragent and the template in
+[.github/ISSUE_TEMPLATE/bug_report.md](.github/ISSUE_TEMPLATE/bug_report.md).
+Include the output of `peeragent version` and
+`peeragent list harness --json`, the harness and its version, what
+you expected, what happened, and the log files of the failing run
+from `~/.local/state/peeragent/logs/`.
 
-- the most recent log files from `~/.local/state/peeragent/logs/`,
-- the output of `peeragent list harness --json`,
-- a short description: the command you ran, what you expected, and
-  what happened instead.
-
-Log files can contain your prompt text and file paths. Read them
-before you attach them.
+Log files contain the text of your launch prompt, the captured pane
+content and absolute file paths.
+Read them before you attach them, and remove what should not become
+public.
 
 ## License
 
-Apache License 2.0. See [`LICENSE`](LICENSE). Source files under
-`tools/` carry an SPDX header with the copyright notice and a note
-that the code was written by AI (Claude Code) and reviewed by a
-human.
+Apache-2.0. See [LICENSE](LICENSE).

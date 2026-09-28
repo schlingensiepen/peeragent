@@ -18,4 +18,5 @@ venv/
 
 # Test scratch output
 tests/**/actual/
+tests/**/tmp/
 *.log
