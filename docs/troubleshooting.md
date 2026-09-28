@@ -178,6 +178,21 @@ Harness-specific pictures worth knowing:
   current directory, continuing falls back to the globally most
   recent session (documented), which may belong to another
   directory. peeragent warns about this when you resume copilot.
+- **A screen nobody recognises is the expected outcome, not a
+  failure.** peeragent carries markers for the questions that recur,
+  and reports everything else as `unknown` with the visible lines
+  attached. It is not a model of each harness's interface, and it
+  will not become one: a marker for every dialog would age with the
+  next release of that harness. Read the lines, act, or ask the
+  person who started you.
+- **Codex CLI, update dialog.** Before anything else the harness can
+  offer to update itself, and the preselected option runs a global
+  package install (`tested` 2026-09-28). It carries no marker, so
+  peeragent reports `unknown` — which is the point. **Never send a
+  trust answer into a screen that was not reported as a trust
+  question:** the digit that means "yes, I trust this folder" in one
+  dialog means "install now" in this one, and these harnesses act on
+  the digit alone, without the Enter their own hint text asks for.
 - **The screen looks ready but the harness is not logged in.**
   GitHub Copilot CLI shows `Please use /login to sign in to use
   Copilot` as a status line above the input while the input line

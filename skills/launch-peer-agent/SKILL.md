@@ -263,6 +263,21 @@ For `agy` and `opencode` no confirmed ready marker exists yet, so
 a healthy first screen from them may still be reported as
 `unknown`. Show it to the user instead of assuming failure.
 
+**`unknown` is not a failure.** peeragent knows the questions that
+recur and reports everything else as `unknown` with the lines it
+saw. It is not a model of each harness's interface. When you get
+`unknown`, read the lines and decide, or show them to the person who
+started you — do not treat it as an error and do not guess a key
+sequence.
+
+**Never send a key sequence into a screen that was not reported as
+the matching state.** One harness can open with an offer to update
+itself whose preselected option installs a package globally, and
+these harnesses act on the digit alone, without Enter. The digit
+that means "yes, I trust this folder" in one dialog means "install
+now" in another. The state in `agent.pane` is what tells the two
+apart.
+
 **One answer is not always enough.** The causes are independent, so
 the questions can queue: a harness with no credentials may ask to
 sign in first and about the directory afterwards, or the other way

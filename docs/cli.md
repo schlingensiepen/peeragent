@@ -220,6 +220,12 @@ given here, and four things follow from it.
 - **The name of the tmux session**, which embeds the directory's
   base name.
 
+peeragent sets it twice where it can: as the working directory of
+the process, and through the harness's own directory option where
+one exists. The two are not the same thing — for one harness the
+trust question follows the repository containing the directory it
+was given, and ignores where the process was started.
+
 Pass the directory the work happens in, not its parent and not the
 place peeragent is called from. If a caller passes the parent, every
 command still succeeds: the harness starts, the prompt arrives, and

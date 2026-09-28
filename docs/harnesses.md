@@ -60,7 +60,7 @@ prints.
 | `codex` | OpenAI Codex CLI | `codex` | `argv` | `experimental` | `unsupported` | `1 Enter` | `codex-cli 0.147.0` |
 | `agy` | Google Antigravity CLI | `agy` | `send_keys` | `experimental` | `unsupported` | none | `1.2.8` |
 | `opencode` | OpenCode (anomalyco) | `opencode` | `send_keys` | `experimental` | `unsupported` | none | `1.18.25` |
-| `copilot` | GitHub Copilot CLI | `copilot` | `send_keys` | `experimental` | `unsupported` | `1 Enter` | `GitHub Copilot CLI 1.0.88.` |
+| `copilot` | GitHub Copilot CLI | `copilot` | `argv` | `experimental` | `unsupported` | `1 Enter` | `GitHub Copilot CLI 1.0.88.` |
 
 The version strings were `tested` on 2026-09-23, as the literal
 first line of `<binary> --version` with whitespace stripped from
@@ -715,12 +715,17 @@ exists for a path by reading the `cwd:` line of those YAML files.
 
 ### Prompt delivery
 
-`send_keys`, and this path is tested. On 2026-09-23 a bracketed
-paste put all three lines of a prompt file into the input, one
-`Enter` sent them, and a trailing newline in the file did not send
-by itself (`tested`). A paste that arrives while copilot is
-working is buffered by the interface and processed after the
-running turn (`tested` 2026-09-23).
+`argv`, through `-i <prompt>`. On 2026-09-28 a prompt passed that
+way survived the trust question and became the first turn after it
+was answered, and the session stayed interactive (`tested`).
+
+Pasting also works and stays the path for delivering a prompt into
+a running session. On 2026-09-23 a bracketed paste put all three
+lines of a prompt file into the input, one `Enter` sent them, and a
+trailing newline in the file did not send by itself (`tested`). A
+paste that arrives while copilot is working is buffered by the
+interface and processed after the running turn
+(`tested` 2026-09-23).
 
 ### Duplicate
 

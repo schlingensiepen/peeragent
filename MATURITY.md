@@ -73,7 +73,7 @@ commands are built on; that is the next table.
 | `codex` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-23 | `resume --last`, `documented` | refused; store `observed` |
 | `agy` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `unverified` |
 | `opencode` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `observed` |
-| `copilot` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `tested` 2026-09-23 | `--continue`, `documented` | refused; store `observed` |
+| `copilot` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-28 | `--continue`, `documented` | refused; store `observed` |
 
 "Detection" means that the binary was found and its version query
 answered. "Launch" means that the harness came up in a tmux pane and
@@ -166,17 +166,22 @@ the alternative. It happens before anything is copied.
   credentials may ask to sign in first and about the directory
   afterwards, or the other way round (`tested` 2026-09-28 for two
   harnesses). Capture again after each answer.
-- **What each harness accepts on its command line is under review.**
-  The help output of the installed binaries names a way to pass an
-  initial prompt to an interactive session for three harnesses that
-  this document lists as paste-only, and a way to pass the working
-  directory for three harnesses (`tested` 2026-09-28, in the sense
-  that the flags exist and their help text says so). Whether they
-  behave as their help promises has not been established: the two
-  runs that would have shown it stopped at an authentication gate.
-  Until a run settles it, the per-harness rows above stand as they
-  are, and the possibility that prompt delivery is simpler than
-  described is `unverified`.
+- **A screen with no marker is the expected outcome.** peeragent
+  carries markers for the questions that recur and reports anything
+  else as `unknown` with the visible lines attached. It is not a
+  model of each harness's interface and will not become one, because
+  a marker for every dialog ages with the next release of that
+  harness. One consequence is worth knowing: the Codex CLI can open
+  with an offer to update itself whose preselected option installs a
+  package globally (`tested` 2026-09-28). It has no marker, so it is
+  reported as `unknown`, which is what keeps a key sequence out of
+  it.
+- **Two harnesses may accept a prompt on the command line without
+  this being established.** The help output of `agy` and `opencode`
+  names such a flag, but neither could be run here for want of a
+  login and a provider, so both stay on pasting in the table above.
+  For GitHub Copilot CLI the same question was settled by a run on
+  2026-09-28 and the table reflects it.
 - A launch prompt is limited to 120 effective characters, where
   absolute paths do not count. A longer prompt is refused before
   anything starts. The limit is specified and not yet exercised by a
@@ -205,6 +210,10 @@ the alternative. It happens before anything is copied.
 - `duplicate` for `codex` and `copilot`, each of which depends on
   whether their index can be extended without writing SQLite.
 - Git templates, repository discovery and remote creation.
+- Whether the fork commands of three harnesses copy a history or
+  only reference it, which would change how a workspace is
+  duplicated. `unverified`; the documentation of one points at a
+  reference rather than a copy, the others are silent.
 - An option for peeragent to answer trust questions under an
   explicit policy, and a command that captures a pane without
   pasting anything.
