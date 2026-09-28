@@ -82,6 +82,36 @@ was installed;
 [`docs/install.md`](../../docs/install.md) describes both
 placements.
 
+## Decide the working directory first
+
+Before you write anything, decide which directory the peer agent
+is to work in, and pass exactly that one. The launched harness
+inherits nothing from you: not your own current directory, not the
+directory you wrote the task file into. It starts where you point
+it.
+
+Point it at the project itself, not at the folder above it. A
+parent directory is the mistake that costs the most, because
+nothing fails: the harness starts, the prompt arrives, the pane
+looks healthy. What goes wrong is quieter. The harness reads
+relative paths against the wrong place, the trust question covers
+more than you meant, and the session history is filed under that
+path, so a later continuation of the intended directory finds
+nothing to continue.
+
+Two habits remove the problem:
+
+- Name absolute paths in the prompt, for the task file and for
+  anywhere the peer agent is to write.
+- Tell the peer agent, in the assignment, which directory it is
+  supposed to be in, and ask it to confirm the directory it
+  actually finds itself in with its first report. That turns a
+  silent misplacement into a sentence you can read.
+
+If you are starting a peer agent for a project you are working in
+yourself, do not assume your own working directory is the right
+one. Establish it, then pass it.
+
 ## Write the assignment: the obligations
 
 peeragent starts a process. It builds no channel back to you.

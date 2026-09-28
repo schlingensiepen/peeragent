@@ -190,13 +190,42 @@ peeragent start agent --folder <path> --harness <key>
 
 | Flag | Required | Meaning |
 |---|---|---|
-| `--folder <path>` | required | Working directory for the harness. Must exist and be a directory. |
+| `--folder <path>` | required | Working directory for the harness. Must exist and be a directory. It is made absolute and becomes the harness process's own working directory. See below for what it decides. |
 | `--harness <key>` | required | Which harness to start. Must be installed. |
 | `--prompt-file <path>` | optional | File holding the launch prompt, UTF-8. Without it the harness starts with no prompt and waits in its own interface. |
 | `--model <string>` | optional | Model string, passed through to the harness opaquely. peeragent does not validate it; the per-harness flag it is mapped to is in [harnesses.md](harnesses.md). |
 | `--resume` | optional | Continue the harness session for this directory. What that means per harness, and which harnesses only support it experimentally, is in [harnesses.md](harnesses.md). |
 | `--git-repo` | optional | Run `git init -b main` in `<folder>` when it is not a git repository yet. No commit, no remote. |
 | `--boot-wait <seconds>` | optional | How long to wait after the start before the first capture. Whole number from 1 to 120, default 5. A replay under `--resume` can take longer than the default, so a higher value is useful there. |
+
+**What the working directory decides**
+
+`--folder` is not a convenience. The launched harness inherits
+nothing from the caller: not the shell's current directory, not the
+directory the prompt file sits in. Its working directory is the path
+given here, and four things follow from it.
+
+- **What the harness can see.** It starts in that directory and
+  reads relative paths against it. A task file placed elsewhere is
+  out of reach unless the prompt names an absolute path.
+- **What the harness asks to trust.** The trust question of the
+  first start covers this directory, and for some harnesses the
+  whole repository it lies in, which can be much larger than
+  intended. [harnesses.md](harnesses.md) has it per harness.
+- **Where the session history goes, and what `--resume` finds.**
+  Harnesses key their session store by the working directory, so
+  `--resume` continues the session belonging to this path. Starting
+  one directory above the project therefore continues nothing, and
+  the earlier history stays where it was.
+- **The name of the tmux session**, which embeds the directory's
+  base name.
+
+Pass the directory the work happens in, not its parent and not the
+place peeragent is called from. If a caller passes the parent, every
+command still succeeds: the harness starts, the prompt arrives, and
+the session is anchored one level too high. Nothing reports an
+error, which is why the choice is worth a deliberate moment.
+[troubleshooting.md](troubleshooting.md) lists the symptoms.
 
 **Preflight, in this order**
 

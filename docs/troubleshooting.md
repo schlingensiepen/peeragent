@@ -166,6 +166,21 @@ Harness-specific pictures worth knowing:
   current directory, continuing falls back to the globally most
   recent session (documented), which may belong to another
   directory. peeragent warns about this when you resume copilot.
+- **The peer agent works in the wrong directory.** This one
+  reports no error at all, which is what makes it expensive. The
+  symptoms: the harness says it cannot find the task file although
+  the file is there; it lists unrelated projects when asked what it
+  sees; the trust question named a path wider than expected; a
+  later start with a continuation finds no session although one was
+  created earlier; the tmux session name carries a base name you
+  did not intend. The cause is almost always a working directory
+  one level too high, usually the parent of the project or the
+  directory peeragent was called from. Check it in the
+  `agent.starting` message, which reports the absolute folder, and
+  start again with the right one. Killing the misplaced session
+  costs nothing; the harness keeps the history it wrote under the
+  wrong path, so there is nothing to clean up beyond the session
+  itself.
 - **Trailing newline in a prompt file.** peeragent strips trailing
   newlines before pasting and always sends `Enter` separately,
   because a trailing newline inside the paste does not submit

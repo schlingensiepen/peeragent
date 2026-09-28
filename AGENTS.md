@@ -124,9 +124,18 @@ Read [skills/launch-peer-agent/SKILL.md](skills/launch-peer-agent/SKILL.md)
 and take the task file template from
 [examples/task-file-template.md](examples/task-file-template.md).
 
-The rule that matters most: write the full assignment into a file in
-the target working directory, and pass only a short prompt that
-points at that file, with a scope and a stop condition.
+Two rules matter most.
+
+The working directory is the one you name with `--folder`, and the
+launched harness inherits nothing else: not your own current
+directory, not the place the prompt file sits in. Name the project
+directory itself, never the folder above it. A parent directory does
+not fail, it only puts the trust question, the relative paths and the
+session history one level too high.
+
+Write the full assignment into a file in that directory, and pass
+only a short prompt that points at that file, with a scope and a stop
+condition.
 
 A complete session, including the trust question and the
 hand-over of a deferred prompt, is played through in
