@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# A stand-in for a coding-agent harness.
+#
+# The conformance runner puts this directory first on PATH under the
+# names of the five harnesses, so both implementations detect and
+# launch something predictable instead of a real tool. Behaviour is
+# chosen by PEERAGENT_FAKE:
+#
+#   (unset)     normal: report a version, then print a banner and block
+#   trust       print a trust dialog, then block
+#   exit        print an error line and exit 1 immediately
+#   hang        --version sleeps longer than any detection timeout
+#   noversion   --version fails, although the binary exists
+#
+# The name it was invoked under decides the version string, so the
+# five fakes are symlinks to this one file.
+set -u
+
+name=$(basename "$0")
+
+case "$name" in
+  claude)   version="2.1.278 (Claude Code)" ;;
+  codex)    version="codex-cli 0.147.0" ;;
+  agy)      version="1.2.8" ;;
+  opencode) version="1.18.25" ;;
+  copilot)  version="GitHub Copilot CLI 1.0.88." ;;
+  *)        version="0.0.0" ;;
+esac
+
+mode="${PEERAGENT_FAKE:-}"
+
+for arg in "$@"; do
+  case "$arg" in
+    --version|-V)
+      case "$mode" in
+        hang)      sleep 30; exit 0 ;;
+        noversion) echo "$name: cannot determine version" >&2; exit 1 ;;
+        *)         printf '%s\n' "$version"; exit 0 ;;
+      esac
+      ;;
+    --help|-h)
+      printf '%s\n' "usage: $name [options] [prompt]"
+      exit 0
+      ;;
+  esac
+done
+
+# Interactive mode. Whatever else was passed - a prompt, a model, a
+# working directory - is ignored on purpose: the point is a stable
+# first screen, not a simulation.
+case "$mode" in
+  exit)
+    printf '%s\n' "$name: fatal: unusable configuration" >&2
+    exit 1
+    ;;
+  trust)
+    cat <<'BOX'
+Do you trust the contents of this directory?
+
+> 1. Yes, continue
+  2. No, quit
+BOX
+    ;;
+  *)
+    printf '%s\n' "$name ready"
+    printf '%s\n' "> "
+    ;;
+esac
+
+# Stay alive so the pane is not dead when the caller looks at it.
+exec cat

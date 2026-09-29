@@ -1,0 +1,1 @@
+duplicate --from @SANDBOX@/nowhere --to @SANDBOX@/b --harness claude --json

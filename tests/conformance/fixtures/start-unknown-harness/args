@@ -1,0 +1,1 @@
+start agent --folder @SANDBOX@/w --harness nosuch --json
