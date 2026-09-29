@@ -81,12 +81,18 @@ shell is its process, and the shell is alive and waiting. The
 multiplexer reports no exit status, because from its point of view
 nothing exited. The harness's exit code would have to be printed by
 the wrapper and read back out of a captured screen - turning a
-number that the multiplexer hands over into a string to be found
-among the harness's own output, and putting a line of our own into
-the screen this tool reports to its caller.
+number the multiplexer hands over into a string to be found among
+the harness's own output, and putting a line of our own into the
+screen this tool reports to its caller.
 
-The choice follows from who is reading. A tool that opens a session
-for a person to attach to is right to keep the pane warm with a
-shell and a "press enter to close". A tool whose output is consumed
-by a program is better off with a field that holds a number. Both
-are defensible; they are not the same job.
+What this is **not** is a trade against the person who attaches.
+Both ways keep the output readable. A pane kept after its process
+exits holds the whole scrollback, and the multiplexer writes its own
+line into it naming the exit status, so someone attaching sees more
+than a wrapper's prompt to press enter would show them. The cost is
+three extra calls at startup and the replacement of a placeholder
+shell that existed for milliseconds as scaffolding.
+
+So the difference is narrow: one way yields the exit status as a
+field, the other would have to write it into a screen. For a tool
+whose report is acted on by a program, that is worth four calls.
