@@ -484,7 +484,7 @@ message is not:
 ,
 {"type":"agent.starting","harness":"agy","folder":"/srv/foo","model":null,"resume":false,"prompt_file":null,"user_relevant":false}
 ,
-{"type":"agent.exited","session":"peeragent-foo-agy-c1d2e3f4","exit_status":2,"lines":["error: unknown option '--no-such-flag'"],"hint":"the harness exited during startup; the tmux session was kept: tmux attach -t '=peeragent-foo-agy-c1d2e3f4'","user_relevant":true}
+{"type":"agent.exited","session":"peeragent-foo-agy-c1d2e3f4","exit_status":2,"lines":["error: unknown option '--no-such-flag'"],"hint":"the harness exited during startup; the tmux session was kept: tmux attach -r -t '=peeragent-foo-agy-c1d2e3f4'","user_relevant":true}
 ]
 ```
 
@@ -507,7 +507,7 @@ preflight before anything is copied:
 
 ```text
 [
-{"type":"fatal","msg":"duplicate for codex is not supported","user_relevant":true,"hint":"codex indexes sessions in a database that peeragent does not modify; use 'codex fork' or 'codex resume --all <id>' in the copied folder instead"}
+{"type":"fatal","msg":"duplicate for codex is not supported","user_relevant":true,"hint":"codex indexes sessions in a database that peeragent does not modify; copy the folder yourself with 'cp -a' and use 'codex resume --all <id>' there"}
 ]
 ```
 

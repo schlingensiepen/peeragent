@@ -205,8 +205,9 @@ test, and no source establishes it.
 same line stays visible while an answer streams, so `busy` wins
 over `ready`. That is also why the second capture is taken for a
 `ready` screen and not only for an unrecognised one: without it a
-harness that is working would be reported as waiting for input. After a finished turn the pane looks like this
-(`tested` 2026-09-23, model `haiku`):
+harness that is working would be reported as waiting for input.
+After a finished turn the pane looks like this (`tested`
+2026-09-23, model `haiku`):
 
 ```text
  ▐▛███▛█   Claude Code v2.1.278
@@ -331,8 +332,10 @@ problem. `codex resume --last "<prompt>"` is
 
 Refused (`unsupported`). Codex keeps a SQLite thread index next
 to the rollout files, and copying files does not reach it. The
-refusal names the harness-native way instead: `codex fork`, or
-`codex resume --all <id>` inside the copied folder.
+refusal names the way round it instead: copy the folder yourself
+with `cp -a` and continue there with `codex resume --all <id>`. It
+cannot point into a copy, because it happens before anything is
+copied.
 
 ### Waiting states
 

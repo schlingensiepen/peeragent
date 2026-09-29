@@ -10,11 +10,16 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  43 cases and compares them with each other. All 43 agree
+  47 cases and compares them with each other. All 47 agree
   (2026-09-29). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
-  passes. No case starts a harness in tmux, no case calls `send`, and
-  the log files are not compared.
+  passes. One case starts a fake harness in tmux; no case calls
+  `send`, and no case uses a real harness. The log files are compared
+  for every case, by the sequence of message types they hold.
+  A workflow under `.github/workflows/` runs that same comparison on a
+  hosted machine, which is what would show it does not depend on one
+  person's setup. It has **never run**: this repository is not public
+  yet, so nothing has executed it. Treat it as intent, not evidence.
 - **Runs against real harnesses.** On 2026-09-29 both programs were
   started against all five real harnesses on a test host, and one
   `agy` session was taken through the whole path with `send`. These
@@ -79,7 +84,7 @@ you is worth most.
 |---|---|---|---|
 | `peeragent list harness` | implemented in both | yes: all installed, none installed, plain text, version query timing out, version query failing | `observed` 2026-09-29 against the five installed harnesses |
 | `peeragent list models` | implemented in both | yes: all, one, not installed, unknown key, plain text | `observed` 2026-09-29 for one harness |
-| `peeragent start agent` | implemented in both | only the refusals before anything starts: unknown harness, missing tool, missing or conflicting folder, missing, empty or too long prompt, bad flags. No case starts a harness | `tested` 2026-09-29: all five harnesses, both programs, up to the first classified screen. With `agy` the run continued through the trust answer and a prompt delivered afterwards |
+| `peeragent start agent` | implemented in both | only the refusals before anything starts: unknown harness, missing tool, missing or conflicting folder, missing, empty or too long prompt, bad flags, and one case that gets past preflight and starts a fake harness | `tested` 2026-09-29: all five harnesses, both programs, up to the first classified screen. With `agy` the run continued through the trust answer and a prompt delivered afterwards |
 | `peeragent send` | implemented in both | no case | `tested` 2026-09-29 with `agy` only |
 | `peeragent duplicate` | implemented in both; `claude` only | yes: a copy with a fake `claude` history, a source without a history, the refusals for `codex` and `copilot`, and the path and destination checks | not run through the program against a real session history: `unverified`. The behaviour it relies on was tested by hand on 2026-09-16 |
 | `peeragent version` | implemented in both | yes: plain text and JSON | `observed` 2026-09-29 |
@@ -183,10 +188,10 @@ means of its own.
 
 | Case | Reason | What to do instead |
 |---|---|---|
-| `duplicate` for `codex` | The session history is indexed in a SQLite thread index next to the transcript files; copying the files alone leaves the index inconsistent, and writing that index is out of scope | `codex fork`, or `codex resume --all <id>` in the original directory |
-| `duplicate` for `copilot` | The session directories are indexed in a SQLite session store which `--continue` reads | `copilot --resume <id>` in the original directory |
-| `duplicate` for `agy` | The session store layout is unknown; only a summary database has been seen, and credentials live in the system keyring | Keep working in the original directory and continue there with `agy --continue` (`documented`) |
-| `duplicate` for `opencode` | Its database carries no schema marker and mixes authentication tables into the same file | Keep working in the original directory and continue there with `opencode --continue` (`documented`) |
+| `duplicate` for `codex` | The session history is indexed in a SQLite thread index next to the transcript files; copying the files alone leaves the index inconsistent, and writing that index is out of scope | Copy the folder yourself with `cp -a` and continue there with `codex resume --all <id>` |
+| `duplicate` for `copilot` | The session directories are indexed in a SQLite session store which `--continue` reads | Copy the folder yourself with `cp -a` and continue there with `copilot --resume <id>` |
+| `duplicate` for `agy` | The session store layout is unknown; only a summary database has been seen, and credentials live in the system keyring | Copy the folder yourself with `cp -a` and start a fresh session there |
+| `duplicate` for `opencode` | Its database carries no schema marker and mixes authentication tables into the same file | Copy the folder yourself with `cp -a` and start a fresh session there |
 | Answering a trust, login or provider question | A tool that answers a trust question on your behalf decides about file access for you | peeragent reports the waiting state and the key sequence that answers it; send it yourself, then hand the prompt over with `peeragent send` |
 | Git templates and remote repositories | Only a local repository is in scope for 0.1.0 | `--git-repo` creates a local repository in an empty working directory |
 

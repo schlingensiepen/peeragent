@@ -1,0 +1,28 @@
+name: conformance
+
+# The claim this repository makes is that two programs behave alike.
+# Running the comparison on a machine nobody here set up is the only
+# way to show that the claim does not depend on one person's laptop.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      - name: Versions
+        run: |
+          bash --version | head -1
+          python3 --version
+          tmux -V
+
+      - name: Compare the two implementations
+        run: tests/conformance/run.sh

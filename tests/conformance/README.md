@@ -68,7 +68,11 @@ directory it belongs to, so it cannot be a static fixture.
 
 ## What is not covered yet
 
-Cases that actually launch a harness in tmux, and `send`, arrive with
-the runtime. Everything here stops in preflight or does its work
-without a pane, which is why the suite needs no tmux except where a
-case deliberately hides it.
+No case calls `send`, and none uses a real harness: the five names
+under `fixtures/bin/` are all one stand-in script.
+
+One case does start a fake harness in tmux, so **the suite needs
+tmux**, and it checks for it before running anything. Each case gets
+its own tmux server through `TMUX_TMPDIR`, and takes its sessions
+down by name afterwards, so a run never touches a server it did not
+create.

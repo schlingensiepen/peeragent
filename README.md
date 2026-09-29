@@ -20,7 +20,7 @@ harness.
 
 peeragent 0.1.0 is a pre-release: both programs are in this
 repository and run. They were started against all five real
-harnesses on 2026-09-29, and the two agree with each other on 41
+harnesses on 2026-09-29, and the two agree with each other on 45
 conformance cases, which shows equivalence and not correctness. Of
 the five supported harnesses only `claude` has detection, launch,
 prompt delivery, resume and duplicate checked on the harness itself.
@@ -152,6 +152,7 @@ the channel.
 | [docs/adr/README.md](docs/adr/README.md) | The decisions behind the design |
 | [skills/launch-peer-agent/SKILL.md](skills/launch-peer-agent/SKILL.md) | The Claude Code skill shipped with the tool |
 | [examples/quick-start.md](examples/quick-start.md) | One session from start to finish |
+| [tests/conformance/README.md](tests/conformance/README.md) | The check behind the equivalence claim, and how to run it yourself |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Changing the two programs, the conformance test, reporting a harness-specific bug |
 | [CHANGELOG.md](CHANGELOG.md) | What changed per version |
 

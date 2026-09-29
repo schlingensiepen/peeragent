@@ -274,8 +274,9 @@ git root for `codex`, so the second start in the same place
 usually goes straight to work. `copilot` asks again unless you answered with its
 remembering option, which peeragent does not choose for you.
 
-For `agy` and `opencode` no confirmed ready marker exists yet, so
-a healthy first screen from them may still be reported as
+For `codex` no confirmed ready marker exists, and the one for
+`opencode` has never been seen on a machine with a provider set up,
+so a healthy first screen from either may still be reported as
 `unknown`. Show it to the user instead of assuming failure.
 
 **`unknown` is not a failure.** peeragent knows the questions that

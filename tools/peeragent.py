@@ -1832,7 +1832,7 @@ def parse_argv(argv: list[str], emitter: Emitter) -> tuple[str, Namespace]:
         )
     if action == "list_git_templates":
         emitter.fatal(
-            "'list git-templates' is not implemented in v1",
+            "the subcommand 'list git-templates' does not exist in this version",
             "planned for a future release; use 'list harness' or 'list models' for now",
             2,
         )

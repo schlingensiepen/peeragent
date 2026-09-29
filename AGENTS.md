@@ -22,7 +22,7 @@ On 2026-09-29 both were started against all five real harnesses on a
 test host and reported a first screen; a complete path with a trust
 answer and a prompt handed over afterwards with `send` was run through
 to an answer for `agy` only.
-The two programs agree with each other on 43 conformance cases. That
+The two programs agree with each other on 47 conformance cases. That
 shows they behave alike, not that either is correct, and none of those
 cases starts a harness.
 `--resume` and `duplicate` have not been run through the programs
@@ -120,6 +120,14 @@ optional.
 
 ```bash
 peeragent list harness --json
+```
+
+If you want to check the claim that the two programs are
+interchangeable rather than take it on trust, run the comparison
+yourself - it needs nothing but this repository and tmux:
+
+```bash
+tests/conformance/run.sh
 ```
 
 Expected: a line `[`, then one object per supported harness in the
