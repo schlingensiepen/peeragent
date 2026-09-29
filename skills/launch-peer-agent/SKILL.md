@@ -221,7 +221,7 @@ message.
 | `trust_prompt` | The harness asks whether to trust the directory. | Answer with the key sequence below, or ask the user first if your policy says so. Then follow the deferred-prompt rule. |
 | `auth_prompt` | The harness is not logged in. | Tell the user. The login is external and interactive; peeragent does not automate it. |
 | `provider_prompt` | The harness needs a model provider configured. | Tell the user. For `opencode` this is `/connect` inside the harness. |
-| `unknown` | No known pattern matched. | Show the user the captured lines and ask how to proceed. |
+| `unknown` | No known pattern matched. | Show the user the captured lines and ask how to proceed. Send no key sequence: for `codex`, `unknown` is also the update dialog, whose preselected option runs a global package install. |
 | `error` | Reserved, not used in version 0.1.0. | A harness that died reports `agent.exited` instead; tell the user and read the log. |
 
 ### Answering a trust prompt
@@ -237,26 +237,34 @@ tmux send-keys -t "=<session>:" Down Enter
 | Harness | First start in a new directory | Key sequence |
 |---|---|---|
 | `claude` | trust prompt | `Down Enter` |
-| `codex` | trust prompt | `1 Enter` |
-| `copilot` | trust prompt | `1 Enter` |
+| `codex` | trust prompt | `1` |
+| `copilot` | trust prompt | `1` |
 | `agy` | login selection, no trust prompt | none; the user has to log in |
 | `opencode` | provider selection, no trust prompt | none; the user has to configure a provider |
 
-The key sequences were tested on 2026-09-23. `claude` needs
-`Down Enter` rather than a confirming key because its dialog
-preselects the refusing option, "No, exit". For `codex` and
-`copilot`, option 1 is the plain yes; `copilot` also offers a
-"remember this folder" variant, which peeragent does not choose
-for the user.
+The key sequences were tested on 2026-09-23 and corrected on
+2026-09-28. `claude` needs `Down Enter` rather than a confirming
+key because its dialog preselects the refusing option, "No, exit".
+For `codex` and `copilot`, option 1 is the plain yes, and the
+digit alone both selects and confirms it: no `Enter` follows.
+Sending one anyway would type into the session that is by then
+already running. `copilot` also offers a "remember this folder"
+variant, which peeragent does not choose for the user.
+
+**These sequences describe the dialogs of one day.** A harness
+update may renumber the options, reword the box or replace it. If
+the screen does not look like the description, do not send
+anything: attach to the session and look. That is also why you
+always give the user the session name — see the last section.
 
 Before you answer for `codex`, note that its trust question
 covers the whole git root, not just the folder you pointed at. If
 the folder sits inside a larger repository, you are trusting the
 repository. Say so to the user rather than answering silently.
 
-A trust answer is remembered per directory for `claude` and
-`codex`, so the second start in the same directory usually goes
-straight to work. `copilot` asks again unless you answered with its
+A trust answer is remembered per directory for `claude` and per
+git root for `codex`, so the second start in the same place
+usually goes straight to work. `copilot` asks again unless you answered with its
 remembering option, which peeragent does not choose for you.
 
 For `agy` and `opencode` no confirmed ready marker exists yet, so
@@ -310,11 +318,11 @@ peeragent send --session <session> --prompt-file <prompt-file>
 
 - `delivery: "argv"` — the prompt was passed as a command-line
   argument and may have survived the interruption. Capture the
-  pane first and send only if the harness did not pick it up,
-  that is, if the input line is empty. Tested on 2026-09-23:
-  `codex` took the argument prompt as its first turn after
-  `1 Enter`, and `claude` after `Down Enter`. In both cases no
-  `send` was needed.
+  pane once it has reached a state you understand, and send only
+  if the harness did not pick it up. Tested on 2026-09-23: `codex`
+  took the argument prompt as its first turn after the trust
+  answer, and `claude` after `Down Enter`. In both cases no `send`
+  was needed.
 - A paste that arrives while the harness is `busy` is buffered by
   the harness and processed after the current turn (tested with
   `copilot`). So a mistaken `send` will not corrupt the session,
@@ -340,18 +348,36 @@ only; for the other four it is documented but untested, and
 anywhere on the host when the working directory has none.
 Check [`MATURITY.md`](../../MATURITY.md) before you rely on it.
 
-## Let the user watch
+## Always give the user the session name
 
-The `agent.started` message carries a hint with a read-only
-attach line:
+After every start, tell the user the name of the tmux session and
+the read-only attach line that `agent.started` carries in its
+hint:
 
 ```bash
 tmux attach -r -t "=<session>"
 ```
 
-Pass that line on when you tell the user what you started.
-Read-only means they can watch and scroll without typing into the
-harness by accident.
+This is not optional and it is not only for the case where
+something went wrong. Read-only means the user can watch and
+scroll without typing into the harness by accident.
+
+The reason is worth knowing, because it decides how much the rest
+of this document is worth. Every marker peeragent matches, every
+key sequence in the table above and every statement about what a
+harness shows describes someone else's interface on a particular
+day. The vendors ship often, and a new version may rename a
+dialog, renumber its options or drop it. When that happens
+peeragent reports `unknown` instead of the state you expected, and
+no amount of specification prevents it.
+
+What does not break is the session itself. It keeps running in
+tmux, and anyone who knows its name can attach and see exactly
+what the harness is showing. That is the fallback under every
+other rule here — and it only works if the user was given the name
+beforehand, not after something went wrong. An agent that keeps
+the session name to itself takes away the one path that does not
+depend on any of our assumptions.
 
 ## The harness can also be started directly
 

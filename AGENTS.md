@@ -124,7 +124,7 @@ Read [skills/launch-peer-agent/SKILL.md](skills/launch-peer-agent/SKILL.md)
 and take the task file template from
 [examples/task-file-template.md](examples/task-file-template.md).
 
-Two rules matter most.
+Three rules matter most.
 
 The working directory is the one you name with `--folder`, and the
 launched harness inherits nothing else: not your own current
@@ -136,8 +136,17 @@ session history one level too high.
 Write the full assignment into a file in that directory, and pass
 only a short prompt that points at that file, with a scope and a stop
 condition. This is enforced, not advised: a prompt longer than 120
-effective characters is refused with exit code 2. Absolute paths are
-not counted, so the path to the task file is free.
+effective characters is refused with exit code 2. Paths that start
+with `/` and contain no spaces are not counted, so the path to the
+task file is free.
+
+Tell the user the name of the tmux session after every start, along
+with the read-only attach line the tool reports. Do this whether or
+not anything went wrong. Everything peeragent knows about the
+harnesses' screens describes someone else's interface on a
+particular day, and an update can invalidate any of it; when that
+happens, the user attaching to the session and looking is the only
+diagnosis left, and it only works if they were given the name.
 
 Remember what happens after the call: the agent you launched keeps
 running in its tmux session on its own, and nothing connects you to

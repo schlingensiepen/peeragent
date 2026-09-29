@@ -56,13 +56,13 @@ peeragent start agent \
   are free; only the words between them are. The counting rule is in
   [`../docs/cli.md`](../docs/cli.md). If your text does not fit, it
   is not a pointer any more and belongs in the task file.
-- No confidential content. Two of the five harnesses receive the
+- No confidential content. Three of the five harnesses receive the
   prompt as a command-line argument, where it is visible to other
   users of the host in the process list. The task file is not.
-- Plain text, UTF-8, and not empty. peeragent rejects an empty or
-  unreadable file before starting anything, and it rejects one whose
-  content does not decode as UTF-8, because the length count needs
-  the decoded text.
+- Plain text and not empty. peeragent rejects an empty or
+  unreadable file before starting anything. It does not check the
+  encoding and will not refuse a file because of it; write UTF-8
+  anyway, because that is what the harness will read.
 - A trailing newline is harmless. peeragent strips trailing
   newlines before pasting into a harness that takes the prompt by
   keystrokes, so the paste does not submit early.

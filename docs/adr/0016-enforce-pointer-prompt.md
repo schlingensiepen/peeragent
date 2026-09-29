@@ -31,17 +31,27 @@ delivered later, so the limit cannot be circumvented by starting
 without a prompt.
 
 Effective length counts the words, not the paths. The content is
-decoded as UTF-8, whitespace at both ends is removed, the rest is
-split on whitespace, every token beginning with a slash is
+read as UTF-8, whitespace at both ends is removed — space, tab,
+carriage return and line feed, and nothing else, so that both
+implementations agree on the boundary case — the rest is split on
+those same four code points, every token beginning with a slash is
 dropped, the remaining tokens are joined with one space each, and
 the Unicode code points of that string are counted. A pointer can
 therefore name the task file and the place to write the report
 without spending its budget, and a deep directory tree does not eat
 into the text.
 
-There is no flag that lifts the limit. A prompt file that does not
-decode as UTF-8 is refused as well, since the count needs the
-decoded text.
+There is no flag that lifts the limit. The encoding of the file is
+not checked: refusing a file for its encoding would make the tool
+a gatekeeper for something that is not its business, and on one of
+the two implementations it could not be done without another
+external tool.
+
+The rule is deliberately coarse. It drops tokens that look like
+paths rather than recognising paths, so a path with a space in it
+counts in part and a quoted path counts in full. That is accepted:
+the limit exists to move the assignment into a file, not to
+measure fairly.
 
 ## Consequences
 

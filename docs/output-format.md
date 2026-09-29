@@ -167,7 +167,7 @@ array.
 | `model.available` | `list models` | `harness`, `key`, `description`, `catalog_updated` |
 | `agent.starting` | `start agent`, before the harness is spawned | `harness`, `folder`, `model` (string or `null`), `resume` (bool), `prompt_file` (absolute path or `null`) |
 | `agent.pane` | after the boot wait, after a paste, and twice in `send` | `session`, `awaiting`, `lines[]` |
-| `agent.prompt_sent` | after a successful paste | `session`, `bytes` (size of the prompt file) |
+| `agent.prompt_sent` | after a successful paste | `session`, `bytes` (size of the prompt file, measured before trailing newlines are stripped for the paste) |
 | `agent.prompt_deferred` | `start agent`, when the prompt was not delivered | `session`, `prompt_file`, `awaiting`, `delivery` (`argv` or `send_keys`), `hint` |
 | `agent.exited` | `start agent`, when the harness is no longer alive after the boot wait | `session`, `exit_status` (number or `null`), `lines[]`, `hint` |
 | `agent.started` | `start agent`, as the last message | `session`, `pane_pid`, `child_processes[]` of `{pid, comm, args}`, `hint` |
@@ -209,7 +209,7 @@ Notes on the fields:
 | Type | Where it appears | Fields |
 |---|---|---|
 | `invocation` | first message of every log | `argv` (with `argv[0]` set to `peeragent`), `timestamp` (UTC, ISO 8601 with `Z`), `pid`, `cwd` |
-| `env` | second message of every log | `impl`, `impl_version` (interpreter version), `peeragent_version`, `tmux`, `git`, `gh` (first line of the version output, or `null`), `vars` (object, redacted) |
+| `env` | second message of every log | `impl`, `impl_version` (interpreter version), `peeragent_version`, `tmux`, `git`, `gh` (not called in this release, always `null`; the field stays because the git templates will fill it later), `vars` (object, redacted) |
 | `timing` | log, once per step; stdout with `--verbose` | `step`, `ms` |
 
 `timing.step` is one of `preflight`, `git-init`, `tmux-create`,
@@ -253,16 +253,20 @@ deliver with: peeragent send --session <session> --prompt-file <file>
 ```
 
 With `delivery: "argv"` the prompt was already on the command line
-of the harness process, so it may have been consumed once the
-blocking dialog is answered.
-The hint says so:
+of the harness process, so it may have been consumed once the pane
+leaves the state it was reported in. The hint says so:
 
 ```text
-the prompt was passed as a command-line argument; after answering
-the prompt, capture the pane - if the harness did not pick it up
-(input line empty), deliver with: peeragent send --session
+the prompt was passed as a command-line argument; once the pane has
+reached a state you understand, capture it - if the harness did not
+pick the prompt up, deliver with: peeragent send --session
 <session> --prompt-file <file>
 ```
+
+The wording avoids two assumptions. The message also fires for
+`unknown`, where there is no dialog to answer; and an empty input
+line is not a usable test, because not every harness has a
+confirmed ready marker.
 
 `send` is called after an `agent.prompt_deferred` and not otherwise;
 see [cli.md](cli.md).
@@ -436,9 +440,9 @@ directory trust first, so the prompt is deferred:
 ,
 {"type":"agent.pane","session":"peeragent-foo-copilot-b7e2d0f1","awaiting":"trust_prompt","lines":["╭ Confirm folder trust ─────────────────────────────╮","│ /srv/foo                                          │","│ Do you trust the files in this folder?            │","│ ❯ 1. Yes                                          │","│   2. Yes, and remember this folder for future …   │","│   3. No (Esc)                                     │","╰───────────────────────────────────────────────────╯"],"user_relevant":false}
 ,
-{"type":"warn","msg":"harness copilot is awaiting trust-prompt confirmation","user_relevant":true,"hint":"send '1' Enter to trust: tmux send-keys -t '=peeragent-foo-copilot-b7e2d0f1:' 1 Enter"}
+{"type":"warn","msg":"harness copilot is awaiting trust-prompt confirmation","user_relevant":true,"hint":"send '1' to trust: tmux send-keys -t '=peeragent-foo-copilot-b7e2d0f1:' 1"}
 ,
-{"type":"agent.prompt_deferred","session":"peeragent-foo-copilot-b7e2d0f1","prompt_file":"/srv/foo/prompt.txt","awaiting":"trust_prompt","delivery":"send_keys","hint":"deliver with: peeragent send --session peeragent-foo-copilot-b7e2d0f1 --prompt-file /srv/foo/prompt.txt","user_relevant":true}
+{"type":"agent.prompt_deferred","session":"peeragent-foo-copilot-b7e2d0f1","prompt_file":"/srv/foo/prompt.txt","awaiting":"trust_prompt","delivery":"argv","hint":"the prompt was passed as a command-line argument; once the pane has reached a state you understand, capture it - if the harness did not pick the prompt up, deliver with: peeragent send --session peeragent-foo-copilot-b7e2d0f1 --prompt-file /srv/foo/prompt.txt","user_relevant":true}
 ,
 {"type":"agent.started","session":"peeragent-foo-copilot-b7e2d0f1","pane_pid":18510,"child_processes":[{"pid":18511,"comm":"MainThread","args":"/usr/local/lib/copilot-linux-x64/copilot"}],"hint":"watch with: tmux attach -r -t '=peeragent-foo-copilot-b7e2d0f1'","user_relevant":false}
 ]

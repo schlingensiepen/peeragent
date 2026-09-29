@@ -140,7 +140,10 @@ instead of simulating it.
 | `resume_support` | `"ok"`, `"experimental"` or `"unsupported"` | maturity of resuming an earlier session. `unsupported` makes `start agent --resume` a `fatal` in preflight; `experimental` produces a `warn` |
 | `duplicate_support` | `"ok"`, `"experimental"` or `"unsupported"` | maturity of copying the session store. `unsupported` makes `duplicate` a `fatal` before anything is copied; `experimental` produces a `warn` |
 | `duplicate_tested` | boolean | whether the copy has been exercised on a test host. It feeds [harnesses.md](harnesses.md) and does not appear in any message |
-| `trust_answer` | string or null | the key sequence that answers the trust question with yes, for example `1 Enter` or `Down Enter`. It is named in the `hint` of a warning; the tool does not send it itself |
+| `trust_answer` | string or null | the key sequence that answers the trust question with yes, for example `1` or `Down Enter`. It is named in the `hint` of a warning; the tool does not send it itself. It records what a dialog looked like on a given day and may be broken by a harness update |
+| `resume_hint` | string or null | what to do when a resume is attempted on a harness whose resume support is `experimental`. The core has no harness names, so texts that differ per harness live here |
+| `duplicate_refusal_hint` | string or null | what to do instead when the harness does not support duplicating. It must not refer to the copy: the refusal happens before anything is copied |
+| `resume_failure_hint` | string or null | what to do when a resume finds no session in the copy |
 
 ### Functions
 
@@ -149,7 +152,7 @@ same contract under a naming convention, described below.
 
 | Function | Meaning |
 |---|---|
-| `detect() -> HarnessInfo{installed: bool, path: str \| None, version: str \| None}` | look the binary up in `PATH`, then run `<binary> --version` under a timeout. `version` is the first line with whitespace trimmed from both ends, kept opaque: no regular expression, no format claim. A timeout or an exec failure while the binary exists yields `installed: true, version: null`, and the core emits a `warn` |
+| `detect() -> HarnessInfo{installed: bool, path: str \| None, version: str \| None}` | look the binary up in `PATH`, then run `<binary> --version` under a timeout. `version` is the first line **of stdout** with whitespace trimmed from both ends, kept opaque: no regular expression, no format claim. stderr is discarded, because one of the harnesses writes a warning line there. A timeout or an exec failure while the binary exists yields `installed: true, version: null`, and the core emits a `warn` |
 | `list_models() -> list[Model{key, description, catalog_updated}]` | the static catalog for this harness, in catalog order |
 | `launch_argv(folder, resume) -> list[str]` | the binary plus resume arguments. Without the model, without the prompt |
 | `model_argv(model) -> list[str]` | the model arguments, with the model string passed through opaquely. Called only when `--model` was given |
@@ -204,6 +207,7 @@ the core dispatches by building the function name from the key:
 | Function | Result on stdout |
 |---|---|
 | `h_<key>_meta` | the constants, pipe-separated: `description`, `binary`, `prompt_delivery`, `resume_support`, `duplicate_support`, `duplicate_tested`, `trust_answer` |
+| `h_<key>_hints` | the three hint texts, pipe-separated: `resume_hint`, `duplicate_refusal_hint`, `resume_failure_hint`; an empty field stands for null |
 | `h_<key>_detect` | `installed\|path\|version`, with `installed` as 0 or 1 and an empty `version` standing for null |
 | `h_<key>_list_models` | one record per line, `key\|description\|catalog_updated` |
 | `h_<key>_launch_argv <folder> <resume>` | the argv, NUL-separated |
@@ -251,7 +255,10 @@ requires Bash 4.4 or newer with GNU coreutils and findutils. Both
 implementations need tmux 3.2 or newer and `ps` from procps for the
 runtime, and git only when `--git-repo` is used. It uses no `jq`,
 no `sqlite3`,
-no `uuidgen` and no `iconv`, and it sets a UTF-8 C locale.
+no `uuidgen` and no `iconv`, and it sets a UTF-8 C locale. The
+absence of `iconv` is why the tool does not validate the encoding
+of a prompt file: a check that only one of the two implementations
+could perform would not be one check but two.
 
 The Bash implementation never parses JSON. It may match literal,
 known tokens in foreign files with `grep` or `sed`, and it reads

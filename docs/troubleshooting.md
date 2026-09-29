@@ -89,16 +89,16 @@ than as ready.
 | Harness | First screen in a fresh directory | Key sequence |
 |---|---|---|
 | `claude` | `trust_prompt` — the preselected option is `No, exit` | `Down Enter` |
-| `codex` | `trust_prompt` — trust applies to the Git repository root | `1 Enter` |
+| `codex` | `trust_prompt` — trust applies to the Git repository root | `1` |
 | `agy` | `auth_prompt` — login method selection | none; log in outside peeragent |
 | `opencode` | `provider_prompt` — no provider configured | none; run `/connect` in the pane |
-| `copilot` | `trust_prompt` — `1` once, `2` remembers the folder | `1 Enter` |
+| `copilot` | `trust_prompt` — `1` once, `2` remembers the folder | `1` |
 
 The key sequences are `tmux send-keys` arguments, not characters
 to type into the pane:
 
 ```bash
-tmux send-keys -t "=<session>:" 1 Enter
+tmux send-keys -t "=<session>:" 1
 tmux send-keys -t "=<session>:" Down Enter
 ```
 
@@ -138,9 +138,8 @@ The exit code is the quickest classifier; the full list is in
 | Harness found, version unknown, plus a warning | 0 | The version query timed out or failed although the binary exists. | Run `<binary> --version` by hand. A self-updating launcher may be busy installing; OpenCode installs a package at startup. |
 | The exited message with an exit status | 4 | The harness was no longer alive after the boot wait. | Read the reported lines: they come from the scrollback and usually carry the harness's own error. The session was kept, so attach and look. |
 | Folder is already a git repository | 2 | You asked for a repository to be initialised in a folder that already has one. | Drop the repository option. |
-| Prompt file missing, unreadable or empty | 2 | The path is wrong, or the file has no content. | Check the path. A prompt file must be non-empty UTF-8. |
-| Prompt too long | 2 | The prompt holds more than 120 effective characters, so it is an assignment and not a pointer. | Write the assignment into a file in the working directory and pass a short prompt that points at it. Absolute paths do not count towards the length; the counting rule is in [`cli.md`](cli.md). |
-| Prompt file not valid UTF-8 | 2 | The file is in another encoding, or it is not text at all. | Convert it to UTF-8. The length count needs the decoded text. |
+| Prompt file missing, unreadable or empty | 2 | The path is wrong, or the file has no content. | Check the path. A prompt file has to exist and hold something; its encoding is not checked. |
+| Prompt too long | 2 | The prompt holds more than 120 effective characters, so it is an assignment and not a pointer. | Write the assignment into a file in the working directory and pass a short prompt that points at it. Paths that start with `/` and hold no spaces do not count towards the length; the counting rule is in [`cli.md`](cli.md). |
 | Duplicate refused before anything was copied | 2 | Only Claude Code sessions can be duplicated. The other four keep their sessions in a database or in an unknown layout. | Use the harness-native way named in the hint. |
 | Session store for destination already exists | 1 | A previous duplicate already created the destination's session store. | Choose a different destination, or remove the stale store yourself. |
 | Destination exists and differs from source | 1 | The destination directory is not a copy of the source. peeragent refuses rather than merge. | Choose an empty destination, or remove the existing one. |
@@ -158,6 +157,12 @@ Harness-specific pictures worth knowing:
   update before the interface appears (tested 2026-08-17), so the
   first start after an update can outlast the default boot wait.
   Raise the boot wait.
+- **GitHub Copilot CLI, slow trust box.** In the run of
+  2026-09-28 the trust box appeared only after eight seconds,
+  while the default boot wait is five. A cold first start that is
+  reported as `unknown` instead of `trust_prompt` is usually this:
+  raise the boot wait and start again. The same applies to a
+  resume, where Claude Code needed eight seconds to replay.
 - **Codex CLI, usage limit.** A dialog beginning
   `You've hit your usage limit` with a model-switch menu is a
   waiting state peeragent has no marker for; it reports `unknown`
@@ -261,7 +266,7 @@ the scrollback, which is why the scrollback form above matters
 Answer a trust prompt:
 
 ```bash
-tmux send-keys -t "=<session>:" 1 Enter
+tmux send-keys -t "=<session>:" 1
 ```
 
 Note the target form. Session-level commands take `=<session>`;

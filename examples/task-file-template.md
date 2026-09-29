@@ -115,7 +115,7 @@ already lost a round trip.
   newlines are safe in this file precisely because it is a file.
   That is the point of keeping the prompt short.
 - **Confidential content belongs here, not in the prompt file.**
-  Two of the five harnesses receive the prompt as a command-line
+  Three of the five harnesses receive the prompt as a command-line
   argument, readable by other users of the host in the process
   list. This file is read by the harness itself.
 

@@ -110,6 +110,12 @@ hands over a launch prompt that could not be delivered at the start,
 and `tmux attach -r -t <session>` lets you watch read-only. Neither
 is a conversation, and nothing reports back to you on its own.
 
+The session name is therefore the one thing worth keeping, and an
+agent using peeragent is required to pass it on to the person it
+works for. It is what lets someone look at the harness directly when
+a screen does not match anything the documentation describes — the
+fallback that no harness update can take away.
+
 So anyone who wants to exchange information with the launched agent
 has to establish a mechanism and describe it in the assignment,
 including how to reach it. The agent will not discover it. Two ways

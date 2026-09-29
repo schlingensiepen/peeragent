@@ -25,8 +25,9 @@ yet; what is verified and what is not is recorded in
   harness. A prompt that could not be delivered because the harness
   was waiting for an answer is reported as deferred, with the
   command that delivers it afterwards.
-- Launch prompts are limited to 120 effective characters, and
-  absolute paths are not counted towards that. A longer prompt is
+- Launch prompts are limited to 120 effective characters, and paths
+  that start with `/` and contain no spaces are not counted towards
+  that. A longer prompt is
   refused with exit code 2 and a hint to write the assignment into a
   file in the working directory and pass a short prompt that points
   at it. The limit applies to a deferred delivery as well, so it
@@ -55,8 +56,9 @@ yet; what is verified and what is not is recorded in
   `--no-log` and `--log-file` control this.
 - The Claude Code skill `launch-peer-agent` ships with the tool. It
   carries the obligations for the calling agent, the pointer prompt
-  convention, how to handle a harness that waits for an answer, and
-  when to hand a prompt over afterwards.
+  convention, how to handle a harness that waits for an answer, when
+  to hand a prompt over afterwards, and the duty to give the user
+  the name of the tmux session after every start.
 - A documentation set covering installation, the command reference,
   the output format, the supported harnesses, troubleshooting, the
   architecture, a glossary and the design decisions, next to a

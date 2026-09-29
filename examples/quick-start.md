@@ -102,9 +102,9 @@ a JSON array:
 ,
 {"type":"agent.pane","session":"peeragent-project-copilot-b7e2d0f1","awaiting":"trust_prompt","lines":["╭ Confirm folder trust ─────────────────────────────╮","│ /srv/project                                      │","│ Do you trust the files in this folder?            │","│ ❯ 1. Yes                                          │","│   2. Yes, and remember this folder for future …   │","│   3. No (Esc)                                     │","╰───────────────────────────────────────────────────╯"],"user_relevant":false}
 ,
-{"type":"warn","msg":"harness copilot is awaiting trust-prompt confirmation","user_relevant":true,"hint":"send '1' Enter to trust: tmux send-keys -t '=peeragent-project-copilot-b7e2d0f1:' 1 Enter"}
+{"type":"warn","msg":"harness copilot is awaiting trust-prompt confirmation","user_relevant":true,"hint":"send '1' to trust: tmux send-keys -t '=peeragent-project-copilot-b7e2d0f1:' 1"}
 ,
-{"type":"agent.prompt_deferred","session":"peeragent-project-copilot-b7e2d0f1","prompt_file":"/srv/project/.peeragent-prompt.txt","awaiting":"trust_prompt","delivery":"send_keys","hint":"deliver with: peeragent send --session peeragent-project-copilot-b7e2d0f1 --prompt-file /srv/project/.peeragent-prompt.txt","user_relevant":true}
+{"type":"agent.prompt_deferred","session":"peeragent-project-copilot-b7e2d0f1","prompt_file":"/srv/project/.peeragent-prompt.txt","awaiting":"trust_prompt","delivery":"argv","hint":"the prompt was passed as a command-line argument; once the pane has reached a state you understand, capture it - if the harness did not pick the prompt up, deliver with: peeragent send --session peeragent-project-copilot-b7e2d0f1 --prompt-file /srv/project/.peeragent-prompt.txt","user_relevant":true}
 ,
 {"type":"agent.started","session":"peeragent-project-copilot-b7e2d0f1","pane_pid":18510,"child_processes":[{"pid":18511,"comm":"MainThread","args":"/usr/local/lib/copilot-linux-x64/copilot"}],"hint":"watch with: tmux attach -r -t '=peeragent-project-copilot-b7e2d0f1'","user_relevant":false}
 ]
@@ -118,11 +118,15 @@ is waiting for an answer. What to read out of it:
   harness stops on something the first time: on the trust question
   if the directory is new to it, or on a login or provider question
   if none is configured on the machine.
-- `agent.prompt_deferred` says the assignment has **not** reached
-  the harness, and `delivery` is `send_keys`. You will deliver it
-  in step 5.
+- `agent.prompt_deferred` says the assignment may **not** have
+  reached the harness, and `delivery` is `argv`: it was on the
+  command line, so it may be taken up once the dialog is answered.
+  Step 5 says how to tell.
 - `agent.started.session` is the name you need for every
-  follow-up command. Keep it.
+  follow-up command. Keep it — and tell the user, together with
+  the read-only attach line from the hint. That is how they can
+  look at the harness themselves when a screen does not match
+  anything described here.
 
 Without `--json` the same run prints one line per message, with
 the pane content indented underneath. Use `--json` when an agent
@@ -135,7 +139,7 @@ the warning contains the whole command. For `copilot` the answer
 is option 1:
 
 ```bash
-tmux send-keys -t "=peeragent-project-copilot-b7e2d0f1:" 1 Enter
+tmux send-keys -t "=peeragent-project-copilot-b7e2d0f1:" 1
 ```
 
 Note the `:` at the end of the target. Pane commands need it;
@@ -146,15 +150,21 @@ Per harness, the first start in a new directory and its answer:
 | Harness | Stops on | Key sequence |
 |---|---|---|
 | `claude` | trust question | `Down Enter` |
-| `codex` | trust question | `1 Enter` |
-| `copilot` | trust question | `1 Enter` |
+| `codex` | trust question | `1` |
+| `copilot` | trust question | `1` |
 | `agy` | login selection | none; the user has to log in |
 | `opencode` | provider selection | none; the user has to run `/connect` |
 
-The key sequences were tested on 2026-09-23. `claude` needs
-`Down Enter` because its dialog preselects "No, exit". For
-`codex`, answering also trusts the whole git root, not just the
-folder you pointed at, so tell the user before you answer.
+The key sequences were tested on 2026-09-23 and corrected on
+2026-09-28. `claude` needs `Down Enter` because its dialog
+preselects "No, exit". For `codex` and `copilot` the digit alone
+both selects and confirms, so nothing follows it. For `codex`,
+answering also trusts the whole git root, not just the folder you
+pointed at, so tell the user before you answer.
+
+A harness update may change any of these dialogs. If the screen
+does not match the description, send nothing and attach to the
+session instead.
 
 For `agy` and `opencode` there is nothing to send. Inform the user
 and stop; the login and the provider setup are interactive and
@@ -315,12 +325,17 @@ captures twice before deciding.
 ## What is evidenced here
 
 - Tested on 2026-09-23: the trust dialog wording of `claude` and
-  its `Down Enter` answer; the `1 Enter` answer for `codex` and
+  its `Down Enter` answer; the trust answer for `codex` and
   `copilot`; the `copilot` busy marker `○ Working esc interrupt`
   and its bare `❯` ready line; `claude` picking up an argument
-  prompt after the trust answer; `codex` doing the same after
-  `1 Enter`; a paste arriving during a `copilot` turn being
-  buffered rather than lost. The two pane captures reproduced
+  prompt after the trust answer; `codex` doing the same; a paste
+  arriving during a `copilot` turn being buffered rather than
+  lost.
+- Tested on 2026-09-28, correcting the above: `codex` and
+  `copilot` confirm their dialogs on the digit alone, so the trust
+  answer for both is `1` and not `1` followed by `Enter`. An
+  `Enter` sent after it lands in the session that is by then
+  already running. The two pane captures reproduced
   above are from that run, with a short test prompt in place of
   this example's.
 - Not recorded end to end: this page is not a transcript of one

@@ -1,6 +1,6 @@
 # Maturity
 
-**Report date:** 2026-09-28 · **peeragent version:** 0.1.0
+**Report date:** 2026-09-29 · **peeragent version:** 0.1.0
 
 The command-line programs are not in this repository yet. `tools/` is
 empty, and no part of the documented workflow can be run from this
@@ -71,7 +71,7 @@ commands are built on; that is the next table.
 |---|---|---|---|---|---|
 | `claude` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-23 | `--continue`, `tested` 2026-09-23 | supported, `tested` 2026-09-16 |
 | `codex` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-23 | `resume --last`, `documented` | refused; store `observed` |
-| `agy` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `unverified` |
+| `agy` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified`; never delivered automatically, see limits | `--continue`, `documented` | refused; store `unverified` |
 | `opencode` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `observed` |
 | `copilot` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-28 | `--continue`, `documented` | refused; store `observed` |
 
@@ -153,6 +153,21 @@ the alternative. It happens before anything is copied.
   are configured, their first screen has not been observed here, so
   what they show then is `unverified`. Either way the caller has to
   handle a first screen that is not ready.
+- **The launch prompt is never delivered automatically for `agy`.**
+  Automatic delivery by keystrokes requires a confirmed ready
+  marker, and `agy` has none. Every start with a prompt file
+  therefore ends in `agent.prompt_deferred`, and the caller
+  delivers with `send` once the screen looks right. This follows
+  from the scope and is not a defect.
+- **Key sequences describe dialogs on a date.** The answer to a
+  trust question is what the harness showed when it was checked.
+  On 2026-09-28 both harnesses that ask with a numbered menu were
+  seen to act on the digit alone, without the Enter their own hint
+  text suggests, so the answer for them is the digit. A harness
+  update may renumber the options or replace the dialog, and then
+  the sequence is wrong. This is why every start ends with the
+  session name being passed to the user: attaching to the session
+  and looking is the one diagnosis that no update can break.
 - There is no back channel. peeragent reports the first screen and
   returns; the launched harness keeps running in its tmux session.
   Anything the launched harness should report back has to be

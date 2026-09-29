@@ -57,10 +57,10 @@ prints.
 | Key | Product | Binary | Prompt delivery | Resume | Duplicate | Trust answer | Version string seen 2026-09-23 |
 |---|---|---|---|---|---|---|---|
 | `claude` | Claude Code CLI (Anthropic) | `claude` | `argv` | `ok` | `ok`, tested | `Down Enter` | `2.1.278 (Claude Code)` |
-| `codex` | OpenAI Codex CLI | `codex` | `argv` | `experimental` | `unsupported` | `1 Enter` | `codex-cli 0.147.0` |
+| `codex` | OpenAI Codex CLI | `codex` | `argv` | `experimental` | `unsupported` | `1` | `codex-cli 0.147.0` |
 | `agy` | Google Antigravity CLI | `agy` | `send_keys` | `experimental` | `unsupported` | none | `1.2.8` |
 | `opencode` | OpenCode (anomalyco) | `opencode` | `send_keys` | `experimental` | `unsupported` | none | `1.18.25` |
-| `copilot` | GitHub Copilot CLI | `copilot` | `argv` | `experimental` | `unsupported` | `1 Enter` | `GitHub Copilot CLI 1.0.88.` |
+| `copilot` | GitHub Copilot CLI | `copilot` | `argv` | `experimental` | `unsupported` | `1` | `GitHub Copilot CLI 1.0.88.` |
 
 The version strings were `tested` on 2026-09-23, as the literal
 first line of `<binary> --version` with whitespace stripped from
@@ -345,10 +345,13 @@ refusal names the harness-native way instead: `codex fork`, or
 ```
 
 The marker is `Do you trust the contents of this directory`. The
-answer is a digit followed by Enter (`tested` 2026-09-23):
+answer is the digit alone, with no Enter after it: the digit both
+selects and confirms (`tested` 2026-09-28). An Enter sent after it
+goes into the session that is by then already running, and what it
+does there has not been checked.
 
 ```bash
-tmux send-keys -t "=<session>:" 1 Enter
+tmux send-keys -t "=<session>:" 1
 ```
 
 Note what you are agreeing to: codex resolves the Git repository
@@ -752,11 +755,13 @@ them):
 ╰───────────────────────────────────────────────────╯
 ```
 
-The marker is `Confirm folder trust`. The answer is a digit
-followed by Enter (`tested` 2026-09-23):
+The marker is `Confirm folder trust`. The answer is the digit
+alone, with no Enter after it — the digit both selects and
+confirms, although the box says "enter to select" (`tested`
+2026-09-28):
 
 ```bash
-tmux send-keys -t "=<session>:" 1 Enter
+tmux send-keys -t "=<session>:" 1
 ```
 
 `1` trusts this once, `2` trusts and remembers the folder, `3`

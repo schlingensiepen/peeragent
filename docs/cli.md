@@ -247,11 +247,12 @@ error, which is why the choice is worth a deliberate moment.
    No harness carries that value in this version; the step is
    provision for later handlers.
 7. With `--prompt-file`: the file exists, is regular, is readable
-   and is not empty, otherwise `fatal` (2). Its content decodes as
-   UTF-8, otherwise `fatal` (2). Its effective length is at most 120
-   characters, otherwise `fatal` (2) with the hint to write the
-   assignment into a file and point at it. The rule is the same for
-   `send`; see below for how the length is counted.
+   and is not empty, otherwise `fatal` (2). Its effective length is
+   at most 120 characters, otherwise `fatal` (2) with the hint to
+   write the assignment into a file and point at it. The rule is the
+   same for `send`; see below for how the length is counted.
+   peeragent does not check the encoding of the file and never
+   refuses one because of it.
 
 **How the prompt length is counted, and why it is limited**
 
@@ -262,22 +263,37 @@ with exit code 2 before anything is started.
 Effective length is counted like this, identically in both
 implementations:
 
-1. The file content is decoded as UTF-8.
-2. Whitespace at both ends is removed.
-3. The rest is split on whitespace.
+1. The file content is read as UTF-8.
+2. Whitespace at both ends is removed. Whitespace is exactly four
+   code points: space, tab, carriage return and line feed. No
+   others, so that both implementations split the same text the
+   same way.
+3. The rest is split on those same four code points.
 4. Every token that begins with `/` is dropped.
 5. The remaining tokens are joined with one space each.
 6. The Unicode code points of that string are counted.
 
-Absolute paths therefore cost nothing. A pointer may name the task
-file and the place to write the report without spending budget, and
-a deep directory tree does not eat into the text. There is no flag
-that lifts the limit. A prompt that does not fit belongs in a file:
+Paths therefore cost nothing, as long as they start with `/` and
+contain no spaces. A pointer may name the task file and the place
+to write the report without spending budget, and a deep directory
+tree does not eat into the text. There is no flag that lifts the
+limit.
+
+The rule is deliberately coarse. It does not recognise paths, it
+drops tokens that look like one: a path containing a space counts
+in part, a path in quotes or inside a Markdown link counts in full,
+a relative path and a URL count in full, and in a script without
+word boundaries the whole text is one token that fits far more
+assignment into 120 code points than English does. None of that is
+worth a second rule set to maintain in two languages. The limit
+exists so that the assignment ends up in a file, not so that it
+measures fairly. If a pointer is refused although it is one, write
+the path without quotes and without spaces. A prompt that does not fit belongs in a file:
 write it into the working directory and point at it, as
 [../examples/prompt-file-template.md](../examples/prompt-file-template.md)
 shows.
 
-The reasons are practical. Two of the five harnesses receive the
+The reasons are practical. Three of the five harnesses receive the
 prompt as a command-line argument, where it is visible to every
 user of the host in the process list. A long prompt is also out of
 sight as soon as the pane has scrolled on, while a task file can be
