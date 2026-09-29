@@ -58,7 +58,7 @@ prints.
 |---|---|---|---|---|---|---|---|
 | `claude` | Claude Code CLI (Anthropic) | `claude` | `argv` | `ok` | `ok`, tested | `Down Enter` | `2.1.278 (Claude Code)` |
 | `codex` | OpenAI Codex CLI | `codex` | `argv` | `experimental` | `unsupported` | `1` | `codex-cli 0.147.0` |
-| `agy` | Google Antigravity CLI | `agy` | `send_keys` | `experimental` | `unsupported` | none | `1.2.8` |
+| `agy` | Google Antigravity CLI | `agy` | `send_keys` | `experimental` | `unsupported` | `Enter` | `1.2.12` |
 | `opencode` | OpenCode (anomalyco) | `opencode` | `send_keys` | `experimental` | `unsupported` | none | `1.18.25` |
 | `copilot` | GitHub Copilot CLI | `copilot` | `argv` | `experimental` | `unsupported` | `1` | `GitHub Copilot CLI 1.0.88.` |
 

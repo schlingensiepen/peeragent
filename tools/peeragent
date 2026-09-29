@@ -1116,8 +1116,11 @@ h_codex_duplicate_session() {
 # --- agy -------------------------------------------------------------------
 
 h_agy_meta() {
+  # Its dialog preselects the accepting option, so Enter alone confirms -
+  # unlike Claude Code, which preselects the refusing one and needs an arrow
+  # key first. Tested 2026-09-29 against agy 1.2.12.
   printf '%s|%s|%s|%s|%s|%s|%s\n' \
-    "Google Antigravity CLI" "agy" "send_keys" "experimental" "unsupported" "false" ""
+    "Google Antigravity CLI" "agy" "send_keys" "experimental" "unsupported" "false" "Enter"
 }
 
 h_agy_resume_hint() {
@@ -1156,13 +1159,25 @@ h_agy_model_argv() {
 h_agy_prompt_prefix_argv() { :; }
 
 h_agy_detect_prompt_type() {
-  local text
+  local text line
   text=$(cat)
+  if [[ $text == *"Do you trust the contents of this project"* \
+     || $text == *"I trust this folder"* ]]; then
+    printf 'trust_prompt\n'
+    return
+  fi
   if [[ $text == *"Select login method"* || $text == *"not signed in"* ]]; then
     printf 'auth_prompt\n'
-  else
-    printf 'unknown\n'
+    return
   fi
+  # The input line is a bare greater-than sign once the harness is ready.
+  while IFS= read -r line; do
+    if [[ ${line//[[:space:]]/} == ">" ]]; then
+      printf 'ready\n'
+      return
+    fi
+  done <<< "$text"
+  printf 'unknown\n'
 }
 
 h_agy_session_store_exists() { return 1; }

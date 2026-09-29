@@ -90,7 +90,7 @@ than as ready.
 |---|---|---|
 | `claude` | `trust_prompt` — the preselected option is `No, exit` | `Down Enter` |
 | `codex` | `trust_prompt` — trust applies to the Git repository root | `1` |
-| `agy` | `auth_prompt` — login method selection | none; log in outside peeragent |
+| `agy` | `trust_prompt` — or `auth_prompt` with no account configured | `Enter`; its dialog preselects the accepting option |
 | `opencode` | `provider_prompt` — no provider configured | none; run `/connect` in the pane |
 | `copilot` | `trust_prompt` — `1` once, `2` remembers the folder | `1` |
 
@@ -102,8 +102,11 @@ tmux send-keys -t "=<session>:" 1
 tmux send-keys -t "=<session>:" Down Enter
 ```
 
-For Claude Code the arrow key matters: the preselected option is
-`No, exit`, so sending only `Enter` would close the harness. The
+Which key matters differs per harness, and the difference is not
+cosmetic. Claude Code preselects `No, exit`, so sending only `Enter`
+would close it. The Antigravity CLI preselects the accepting option,
+so `Enter` is exactly right there. Reading one harness's answer off
+another is how a session gets closed by accident. The
 exact wording of every prompt is in
 [`harnesses.md`](harnesses.md).
 

@@ -71,7 +71,7 @@ commands are built on; that is the next table.
 |---|---|---|---|---|---|
 | `claude` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-23 | `--continue`, `tested` 2026-09-23 | supported, `tested` 2026-09-16 |
 | `codex` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-23 | `resume --last`, `documented` | refused; store `observed` |
-| `agy` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified`; never delivered automatically, see limits | `--continue`, `documented` | refused; store `unverified` |
+| `agy` | `tested` 2026-09-29 | `tested` 2026-09-29 | `send_keys`, `tested` 2026-09-29 | `--continue`, `documented` | refused; store `unverified` |
 | `opencode` | `tested` 2026-09-23 | `tested` 2026-09-23 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `observed` |
 | `copilot` | `tested` 2026-09-23 | `tested` 2026-09-23 | `argv`, `tested` 2026-09-28 | `--continue`, `documented` | refused; store `observed` |
 
@@ -98,11 +98,12 @@ Per harness, in detail:
   unclassified waiting state. Pasting a prompt into a running
   `codex` has not been tried, and the position of the model argument
   after a resume is unverified.
-- `agy` blocks with a login selection when no account is configured,
-  which is what a test host without a login sees. Nothing beyond
-  that is verified: there is no known marker for its input prompt,
-  the prompt hand-over by pasting has never been run, and its
-  session store layout is unknown.
+- `agy` blocks with a login selection when no account is
+  configured, which is what a test host without a login sees. With
+  an account configured it asks about the directory instead and then
+  comes up ready; both screens, the trust answer and the prompt
+  hand-over by pasting are `tested` 2026-09-29. Its session store
+  layout remains unknown, so duplicating is still refused.
 - `opencode` comes up but refuses to work until a provider is
   configured. Its wrapper may run a package install during startup,
   which is why a version query can time out. The prompt hand-over by
@@ -153,17 +154,16 @@ the alternative. It happens before anything is copied.
   are configured, their first screen has not been observed here, so
   what they show then is `unverified`. Either way the caller has to
   handle a first screen that is not ready.
-- **The launch prompt is never delivered automatically for `agy`.**
-  Automatic delivery by keystrokes requires a confirmed ready
-  marker, and `agy` has none. Every start with a prompt file
-  therefore ends in `agent.prompt_deferred`, and the caller
-  delivers with `send` once the screen looks right. This follows
-  from the scope and is not a defect.
-- **Key sequences describe dialogs on a date.** The answer to a
-  trust question is what the harness showed when it was checked.
-  On 2026-09-28 both harnesses that ask with a numbered menu were
-  seen to act on the digit alone, without the Enter their own hint
-  text suggests, so the answer for them is the digit. A harness
+- **Key sequences describe dialogs on a date, and there are three
+  different ones.** The answer to a trust question is whatever the
+  harness showed when it was checked. Claude Code preselects the
+  refusing option, so an arrow key comes first. The two that ask
+  with a numbered menu act on the digit alone, without the Enter
+  their own hint text suggests (`tested` 2026-09-28). The
+  Antigravity CLI preselects the accepting option, so a bare Enter
+  confirms (`tested` 2026-09-29). Three harnesses, three patterns
+  for one question - which is why the sequence belongs to the
+  harness description and not to a general rule. A harness
   update may renumber the options or replace the dialog, and then
   the sequence is wrong. This is why every start ends with the
   session name being passed to the user: attaching to the session

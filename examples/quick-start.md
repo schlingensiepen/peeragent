@@ -152,7 +152,7 @@ Per harness, the first start in a new directory and its answer:
 | `claude` | trust question | `Down Enter` |
 | `codex` | trust question | `1` |
 | `copilot` | trust question | `1` |
-| `agy` | login selection | none; the user has to log in |
+| `agy` | trust question, or a login selection with no account | `Enter` |
 | `opencode` | provider selection | none; the user has to run `/connect` |
 
 The key sequences were tested on 2026-09-23 and corrected on

@@ -239,7 +239,7 @@ tmux send-keys -t "=<session>:" Down Enter
 | `claude` | trust prompt | `Down Enter` |
 | `codex` | trust prompt | `1` |
 | `copilot` | trust prompt | `1` |
-| `agy` | login selection, no trust prompt | none; the user has to log in |
+| `agy` | trust prompt, or a login selection when no account is configured | `Enter` - its dialog preselects the accepting option |
 | `opencode` | provider selection, no trust prompt | none; the user has to configure a provider |
 
 The key sequences were tested on 2026-09-23 and corrected on

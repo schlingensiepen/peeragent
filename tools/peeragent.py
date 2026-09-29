@@ -683,7 +683,10 @@ class AgyHandler(Handler):
     resume_support = "experimental"
     duplicate_support = "unsupported"
     duplicate_tested = False
-    trust_answer = None
+    # Its dialog preselects the accepting option, so Enter alone confirms -
+    # unlike Claude Code, which preselects the refusing one and needs an
+    # arrow key first. Tested 2026-09-29 against agy 1.2.12.
+    trust_answer = "Enter"
     resume_hint = (
         "resume behaviour for agy is undocumented; check the pane after the "
         "boot wait to confirm which session was resumed"
@@ -707,8 +710,16 @@ class AgyHandler(Handler):
         return ["--model", model]
 
     def detect_prompt_type(self, pane_text):
+        if (
+            "Do you trust the contents of this project" in pane_text
+            or "I trust this folder" in pane_text
+        ):
+            return "trust_prompt"
         if "Select login method" in pane_text or "not signed in" in pane_text:
             return "auth_prompt"
+        for line in pane_text.split("\n"):
+            if line.strip() == ">":
+                return "ready"
         return "unknown"
 
 
