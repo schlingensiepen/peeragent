@@ -350,11 +350,13 @@ sequence. For each subcommand there is additionally a plain-text
 case, compared by line count and by the first word of each line
 after the same normalization. A difference is reported as a diff.
 
-Unit tests cover the parts that are easier to check directly than
-through the CLI: the emitter, the string escaping in both
-languages against the same inputs, path sanitizing, environment
-redaction, identifier generation, and the pane classification
-patterns against recorded pane snapshots.
+There are no unit tests. The parts that would be easier to check
+directly than through the command line - the escaping, path
+sanitizing, environment redaction, identifier generation, and the
+screen classification patterns against recorded panes - are covered
+only as far as a conformance case happens to exercise them. That is
+a gap, and [MATURITY.md](../MATURITY.md) lists it as planned rather
+than pretending otherwise.
 
 ## The tmux runtime
 

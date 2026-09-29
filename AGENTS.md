@@ -22,7 +22,7 @@ On 2026-09-29 both were started against all five real harnesses on a
 test host and reported a first screen; a complete path with a trust
 answer and a prompt handed over afterwards with `send` was run through
 to an answer for `agy` only.
-The two programs agree with each other on 41 conformance cases. That
+The two programs agree with each other on 43 conformance cases. That
 shows they behave alike, not that either is correct, and none of those
 cases starts a harness.
 `--resume` and `duplicate` have not been run through the programs

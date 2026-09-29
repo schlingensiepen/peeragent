@@ -131,16 +131,20 @@ exact wording of every prompt is in
 
 There are consequences for the start prompt:
 
-- With the harnesses that take the prompt on the command line
-  (`claude`, `codex`) the prompt survives the trust prompt and
-  becomes the first turn once the trust question is answered
-  (tested 2026-09-23 for both). Capture the pane after answering;
-  only if the input line is empty does the prompt need to be
-  delivered again. Delivering it twice sends it twice.
-- With the harnesses that take the prompt by paste (`agy`,
-  `opencode`, `copilot`) nothing was delivered, and peeragent says
-  so with a deferred-prompt message. Answer the prompt first, then
-  deliver with `peeragent send`.
+- With the three harnesses that take the prompt on the command line
+  (`claude`, `codex`, `copilot`) the prompt survives the trust
+  question and becomes the first turn once it is answered (tested
+  2026-09-23 for the first two, 2026-09-28 for the third). The
+  deferred-prompt message still appears, because peeragent cannot
+  know whether the harness took the prompt up while a dialog was in
+  the way, and it says `argv` in its `delivery` field. Read that
+  field: capture the pane once it shows a state you understand, and
+  deliver again **only** if the prompt is not there. Delivering
+  twice sends it twice.
+- With the two that take it by paste (`agy`, `opencode`) nothing was
+  delivered while the pane was not ready, and the deferred-prompt
+  message says `send_keys`. Answer the question first, then deliver
+  with `peeragent send`.
 
 Trust decisions are remembered per directory by Claude Code
 (tested 2026-09-23), and the GitHub Copilot CLI offers a remember

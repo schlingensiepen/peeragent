@@ -716,9 +716,10 @@ class AgyHandler(Handler):
         "boot wait to confirm which session was resumed"
     )
     duplicate_refusal_hint = (
-        "agy's session storage location is undocumented (credentials live in "
-        "the system keyring); peeragent cannot copy it, start a new session in "
-        "the copy instead"
+        "the session storage location of this harness is undocumented "
+        "(credentials live in the system keyring), so peeragent will not copy "
+        "it; copy the folder yourself with 'cp -a' and start a fresh session "
+        "there"
     )
 
     def list_models(self):
@@ -761,8 +762,9 @@ class OpencodeHandler(Handler):
         "check the pane after the boot wait"
     )
     duplicate_refusal_hint = (
-        "opencode.db has no documented schema and stores authentication tables; "
-        "peeragent cannot copy it, start a new session in the copy instead"
+        "the session database of this harness has no documented schema and "
+        "holds authentication tables, so peeragent will not copy it; copy the "
+        "folder yourself with 'cp -a' and start a fresh session there"
     )
 
     def list_models(self):
@@ -1549,8 +1551,9 @@ def cmd_duplicate(emitter: Emitter, ns) -> int:
     handler = resolve_handler(emitter, ns.harness)
     if handler.duplicate_support == "unsupported":
         emitter.fatal(
-            f"duplicate for {handler.key} is not supported in v1",
-            handler.duplicate_refusal_hint or "start a new session in the copy instead",
+            f"duplicate for {handler.key} is not supported in this release",
+            handler.duplicate_refusal_hint
+            or "copy the folder yourself with 'cp -a' and start a fresh session there",
             2,
         )
 

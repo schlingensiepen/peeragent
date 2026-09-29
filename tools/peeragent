@@ -2116,7 +2116,7 @@ cmd_duplicate() {
   pf_harness_known "$ARG_HARNESS"
   if [[ $H_DUPLICATE_SUPPORT == unsupported ]]; then
     handler_hint "$H_KEY" duplicate_refusal_hint
-    fatal 2 "duplicate for $H_KEY is not supported in v1" "$HINT_TEXT"
+    fatal 2 "duplicate for $H_KEY is not supported in this release" "$HINT_TEXT"
   fi
   if [[ ! -d $src ]]; then
     fatal 2 "source does not exist or is not a directory: $src" \

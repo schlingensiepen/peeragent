@@ -93,11 +93,27 @@ for name in "${cases[@]}"; do
       py) cmd=("python3" "$py") ;;
       sh) cmd=("bash" "$sh") ;;
     esac
+    # A tmux server of this case's own. Without it a case that starts a
+    # harness would land on whatever server the person running the suite
+    # happens to have, and leave sessions behind in it. TMUX is not
+    # inherited here because the environment is built from nothing.
+    mkdir -p "$box/tmux"
     env -i HOME="$home" PATH="$path" TMPDIR="$box" \
+        TMUX_TMPDIR="$box/tmux" \
         LC_ALL=C.UTF-8 TERM=dumb "${extra[@]}" \
         "${cmd[@]}" "${argv[@]}" \
         >"$work/$impl.out" 2>"$work/$impl.err"
     printf '%s' "$?" > "$work/$impl.code"
+  done
+
+  # Whatever a case started goes down with its own server. Only this
+  # one is ever touched: the suite never calls kill-server on a socket
+  # it did not create, and never kills a session by pattern.
+  for impl in py sh; do
+    sock="$work/$impl/tmux"
+    if [ -d "$sock" ]; then
+      TMUX= TMUX_TMPDIR="$sock" tmux kill-server >/dev/null 2>&1 || true
+    fi
   done
 
   # Both streams, and the exit status: a comparison that dies with a

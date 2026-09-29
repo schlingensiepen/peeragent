@@ -10,7 +10,7 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  41 cases and compares them with each other. All 41 agree
+  43 cases and compares them with each other. All 43 agree
   (2026-09-29). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
   passes. No case starts a harness in tmux, no case calls `send`, and
@@ -207,6 +207,21 @@ the alternative. It happens before anything is copied.
   provider, its first screen has not been observed here, so what it
   shows then is `unverified`. Either way the caller has to handle a
   first screen that is not ready.
+- **A harness inherits the environment of the tmux server, not of
+  the caller.** peeragent uses the standard tmux server, and a server
+  that is already running was started by something else with whatever
+  environment that had. A variable you set for the peeragent call -
+  a relocated harness configuration directory, for instance - does
+  not reach a harness launched into an existing server. On a machine
+  where the server started fresh with the call it does. There is no
+  way to tell from the output which of the two happened, so treat any
+  environment-dependent setting as unreliable across a start.
+- **The launched harness outlives peeragent, but not everything.**
+  It keeps running in its tmux session, as intended. It does not
+  survive the tmux server going down, and on a machine where the
+  account has no lingering enabled, logging out takes the server with
+  it. If an unattended agent has to survive a disconnect, the server
+  has to be allowed to.
 - **Key sequences describe dialogs on a date, and there are three
   different ones.** The answer to a trust question is whatever the
   harness showed when it was checked. Claude Code preselects the

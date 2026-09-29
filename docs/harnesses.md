@@ -256,7 +256,11 @@ The output carries a prefix: `codex-cli 0.147.0` (`tested`
 
 ### Start arguments
 
-peeragent starts `codex` with no extra arguments. With resume it
+peeragent starts `codex` with `-C <folder>`, the working directory
+you named. It is set twice on purpose: the pane gets the directory
+too, but this flag is what the harness itself treats as its root,
+and the trust question follows the Git repository root of **this**
+path. With resume it
 starts `codex resume --last`. No sandbox or approval flags are
 set.
 
@@ -467,12 +471,17 @@ configuration directory is documented.
 
 ### Prompt delivery
 
-`send_keys`. No interactive start with an initial prompt is
-documented; the print flag runs headless and exits, which would
-end the pane. peeragent therefore pastes the prompt into the
-running pane, and only when the pane is `ready`. Because agy
-stayed on the login selection in both test runs, the paste path
-for agy is `unverified`.
+`send_keys`. A flag for an interactive start with an initial prompt
+does exist — `--prompt-interactive`, short `-i` — but what it does
+has never been run here, and the print flag is the headless one,
+which would end the pane. peeragent therefore pastes the prompt
+into the running pane, and only when the pane is `ready`.
+
+The paste path is `tested` 2026-09-29: with an account configured
+and the trust question answered, a prompt delivered with
+`peeragent send` reached the harness and was answered. Delivery by
+`start agent` itself, without the trust question in the way, has
+not been run.
 
 ### Duplicate
 
@@ -497,16 +506,46 @@ again 2026-09-23 with agy 1.2.8):
 ```
 
 The markers are `Select login method` and `not signed in`. There
-is no key sequence: peeragent does not automate a login, and the
-trust answer for agy is empty. Log in outside peeragent, then
-start again.
+is no key sequence for this one: peeragent does not automate a
+login. Log in outside peeragent, then start again.
 
-**Ready.** No marker is backed by any source, so an agy pane
-usually reports `unknown` unless the two captures differ, in
-which case peeragent reports `busy`.
+That screen belongs to a machine without an account. It is not a
+property of the harness, and describing it as one was a mistake
+that two test hosts without a login made easy to believe.
 
-Whether a trust or permission prompt follows the login is not
-covered by any source.
+**Trust prompt** (`tested` 2026-09-29, agy 1.2.12). With an account
+configured, a start in a directory the harness does not know yet
+asks about the directory instead:
+
+```text
+ Accessing workspace:
+ /srv/project
+
+ Do you trust the contents of this project?
+ Antigravity CLI requires permission to read, edit, and execute files here.
+
+ > Yes, I trust this folder
+   No, exit
+
+   Up/Down Navigate - enter Confirm
+```
+
+The markers are `Do you trust the contents of this project` and
+`I trust this folder`. **The preselected option is the accepting
+one**, so the answer is a bare `Enter`:
+
+```bash
+tmux send-keys -t "=<session>:" Enter
+```
+
+That differs from Claude Code, which preselects the refusing option
+and needs an arrow key first. Sending `Enter` alone there would
+close the harness, so do not carry one answer over to the other.
+
+**Ready** (`tested` 2026-09-29). After the trust answer the pane
+shows a line that is exactly `>`, with a status line reading
+`? for shortcuts`. That is the marker, so a prompt is delivered by
+paste once the pane reaches it.
 
 **Process picture.** The pane process re-executes itself with
 internal flags, seen as
@@ -672,7 +711,10 @@ peeragent reads the first line only.
 
 ### Start arguments
 
-peeragent starts `copilot` with no extra arguments. With resume it
+peeragent starts `copilot` with `-C <folder>`, the working directory
+you named, for the same reason as the Codex CLI: the pane directory
+and the harness's own idea of its root are two different things.
+With resume it
 adds `--continue`.
 
 ### Model flag
