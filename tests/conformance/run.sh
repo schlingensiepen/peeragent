@@ -44,10 +44,11 @@ for name in "${cases[@]}"; do
     fail=$((fail + 1)); failed+=("$name"); continue
   fi
 
+  # Each implementation gets its own sandbox. They must: a case that
+  # writes - duplicate creates a session store - would otherwise let
+  # whichever ran first decide what the second one finds.
   work="$sandbox/$name"
-  home="$work/home"
-  mkdir -p "$home"
-  [ -d "$dir/home" ] && cp -a "$dir/home/." "$home/"
+  mkdir -p "$work"
 
   # mode: json (default), plain, or help - how the outputs are compared.
   mode=json
@@ -76,30 +77,37 @@ for name in "${cases[@]}"; do
     done < "$dir/env"
   fi
 
-  [ -f "$dir/setup.sh" ] && SANDBOX="$work" HOME="$home" \
-    bash "$dir/setup.sh" >"$work/setup.log" 2>&1
-
-  args=$(sed -e "s|@SANDBOX@|$work|g" -e "s|@HOME@|$home|g" "$dir/args")
-  # shellcheck disable=SC2206  # deliberate word splitting of the case args
-  argv=($args)
-
   for impl in py sh; do
+    box="$work/$impl"
+    home="$box/home"
+    mkdir -p "$home"
+    [ -d "$dir/home" ] && cp -a "$dir/home/." "$home/"
+    [ -f "$dir/setup.sh" ] && SANDBOX="$box" HOME="$home" \
+      bash "$dir/setup.sh" >"$box/setup.log" 2>&1
+
+    args=$(sed -e "s|@SANDBOX@|$box|g" -e "s|@HOME@|$home|g" "$dir/args")
+    # shellcheck disable=SC2206  # deliberate word splitting of the case args
+    argv=($args)
+
     case "$impl" in
       py) cmd=("python3" "$py") ;;
       sh) cmd=("bash" "$sh") ;;
     esac
-    env -i HOME="$home" PATH="$path" TMPDIR="$work" \
+    env -i HOME="$home" PATH="$path" TMPDIR="$box" \
         LC_ALL=C.UTF-8 TERM=dumb "${extra[@]}" \
         "${cmd[@]}" "${argv[@]}" \
         >"$work/$impl.out" 2>"$work/$impl.err"
     printf '%s' "$?" > "$work/$impl.code"
   done
 
+  # Both streams, and the exit status: a comparison that dies with a
+  # message on stderr must not read as agreement.
   out=$(python3 "$here/compare.py" "$mode" \
         "$work/py.out" "$work/sh.out" \
         "$(cat "$work/py.code")" "$(cat "$work/sh.code")" \
-        "$work" "$home")
-  if [ -z "$out" ]; then
+        "$work/py" "$work/py/home" "$work/sh" "$work/sh/home" 2>&1)
+  verdict=$?
+  if [ "$verdict" -eq 0 ] && [ -z "$out" ]; then
     printf 'ok   %s\n' "$name"
     pass=$((pass + 1))
   else

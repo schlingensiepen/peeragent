@@ -38,6 +38,13 @@ EXEMPT_TYPES = {"env"}
 
 SESSION = re.compile(r"^(peeragent-.*-)[0-9a-f]{8}$")
 
+NON_ALNUM = re.compile(r"[^a-zA-Z0-9]")
+
+
+def sanitized(path):
+    """The form a harness uses when it names a store after a directory."""
+    return NON_ALNUM.sub("-", path)
+
 
 def normalise(value, key=None, sandbox=None, home=None):
     if key in OPAQUE:
@@ -59,10 +66,16 @@ def normalise(value, key=None, sandbox=None, home=None):
         if key == "argv":
             return value
         out = value
-        if sandbox:
-            out = out.replace(sandbox, "<SANDBOX>")
-        if home:
-            out = out.replace(home, "<HOME>")
+        # Longest first: home sits inside sandbox, so replacing the
+        # shorter one first would leave a mangled remainder. Each path
+        # is also replaced in the form a harness stores it under, with
+        # every non-alphanumeric character turned into a dash - that is
+        # how a session store is named after its working directory.
+        for raw, label in ((home, "<HOME>"), (sandbox, "<SANDBOX>")):
+            if not raw:
+                continue
+            out = out.replace(raw, label)
+            out = out.replace(sanitized(raw), label)
         return out
     return value
 
@@ -93,7 +106,13 @@ def load(path):
         raise SystemExit(f"not parsable as JSON: {path}: {exc}")
 
 
-def compare_json(a_path, b_path, sandbox, home):
+def compare_json(a_path, b_path, boxes):
+    """boxes: ((sandbox_a, home_a), (sandbox_b, home_b)).
+
+    Each side runs in its own sandbox, so each is normalised with its
+    own paths before the two are held against each other.
+    """
+    (sa, ha), (sb, hb) = boxes
     a, _ = load(a_path)
     b, _ = load(b_path)
     problems = []
@@ -106,8 +125,8 @@ def compare_json(a_path, b_path, sandbox, home):
             continue
         if tx in EXEMPT_TYPES:
             continue
-        nx = normalise_message(x, sandbox, home)
-        ny = normalise_message(y, sandbox, home)
+        nx = normalise_message(x, sa, ha)
+        ny = normalise_message(y, sb, hb)
         if nx != ny:
             keys = set(nx) ^ set(ny)
             if keys:
@@ -142,18 +161,23 @@ def main():
     if len(sys.argv) < 6:
         raise SystemExit(
             "usage: compare.py <mode> <a> <b> <exit_a> <exit_b> "
-            "[sandbox] [home]"
+            "[sandbox_a home_a sandbox_b home_b]"
         )
     mode, a_path, b_path, code_a, code_b = sys.argv[1:6]
-    sandbox = sys.argv[6] if len(sys.argv) > 6 else None
-    home = sys.argv[7] if len(sys.argv) > 7 else None
+    rest = sys.argv[6:]
+    if len(rest) == 4:
+        boxes = ((rest[0], rest[1]), (rest[2], rest[3]))
+    elif len(rest) == 2:
+        boxes = ((rest[0], rest[1]), (rest[0], rest[1]))
+    else:
+        boxes = ((None, None), (None, None))
 
     problems = []
     if code_a != code_b:
         problems.append(f"exit code: python {code_a}, bash {code_b}")
 
     if mode == "json":
-        problems += compare_json(a_path, b_path, sandbox, home)
+        problems += compare_json(a_path, b_path, boxes)
     elif mode == "plain":
         problems += compare_plain(a_path, b_path)
     elif mode == "help":

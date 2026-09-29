@@ -1,0 +1,2476 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Jörn Schlingensiepen
+# This code was written by AI (Claude Code) and reviewed by a human.
+#
+# peeragent - start a coding agent harness in a tmux session, report the
+# first screen as machine readable messages, deliver a launch prompt that
+# was left behind, duplicate a working directory together with its harness
+# session store, and list harnesses and models.
+#
+# File layout, in this order: header, emitter and log, helpers, model
+# catalogs, handler contract and the five handler sections, tmux runtime,
+# git setup, preflight, commands, CLI.
+
+# ===========================================================================
+# 1. Header
+# ===========================================================================
+
+set -uo pipefail
+
+# String handling has to be UTF-8 aware: the prompt limit counts code
+# points and pane text is copied through unchanged. The value stays
+# unexported so that the launched harness keeps the caller's locale.
+LC_ALL=C.UTF-8
+
+if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4))); then
+  printf 'peeragent needs bash 4.4 or newer\n' >&2
+  exit 1
+fi
+
+PEERAGENT_VERSION="0.1.0"
+PEERAGENT_IMPL="bash"
+PEERAGENT_PID=$$
+
+readonly TIMEOUT_DETECT=10
+readonly TIMEOUT_TMUX=10
+readonly TIMEOUT_PS=10
+readonly TIMEOUT_GIT=10
+readonly TIMEOUT_GIT_INIT=30
+readonly PANE_WIDTH=200
+readonly PANE_HEIGHT=50
+readonly PROMPT_LIMIT=120
+readonly DEAD_PANE_LINES=50
+readonly SESSION_SLUG_MAX=32
+readonly SESSION_ATTEMPTS=5
+readonly BOOT_WAIT_DEFAULT=5
+readonly SEND_WAIT_DEFAULT=2
+readonly POST_PASTE_WAIT=2
+readonly SECOND_CAPTURE_WAIT=2
+readonly HANDLER_KEYS="claude codex agy opencode copilot"
+readonly CATALOG_UPDATED="2026-08-16"
+
+# The four code points that count as whitespace when the effective prompt
+# length is measured. Fixing the set keeps the count identical across
+# implementations; a Unicode aware trim would treat NBSP as whitespace and
+# shift the result at the limit.
+readonly WS4=$' \t\r\n'
+readonly RWS=$' \t'
+
+HOME_DIR=${HOME:-/}
+
+# Output and log state
+OUT_MODE="plain"
+ARRAY_OPEN=0
+STDOUT_COUNT=0
+COLOR=0
+NO_COLOR_FLAG=0
+VERBOSE=0
+NO_LOG=0
+LOG_PATH=""
+LOG_ENABLED=1
+LOG_OPEN=0
+LOG_COUNT=0
+LOG_ACTION="invalid"
+declare -a LOG_BUFFER=()
+FINISHED=0
+TMPD=""
+PASTE_BUFFER=""
+TMUX_VERSION=""
+GIT_VERSION=""
+
+# Payload carried into the emitter for the two list valued fields
+declare -a EMIT_LINES=()
+declare -a EMIT_CHILDREN=()
+
+C_RED=$'\033[31m'
+C_YELLOW=$'\033[33m'
+C_RESET=$'\033[0m'
+
+# Parsed arguments
+CMD=""
+ARG_FOLDER=""
+ARG_HARNESS=""
+ARG_PROMPT_FILE=""
+ARG_MODEL=""
+ARG_SESSION=""
+ARG_FROM=""
+ARG_TO=""
+ARG_RESUME=0
+ARG_GIT_REPO=0
+ARG_BOOT_WAIT=$BOOT_WAIT_DEFAULT
+ARG_WAIT=$SEND_WAIT_DEFAULT
+
+# Handler fields of the currently loaded handler
+H_KEY=""
+H_DESCRIPTION=""
+H_BINARY=""
+H_PROMPT_DELIVERY=""
+H_RESUME_SUPPORT=""
+H_DUPLICATE_SUPPORT=""
+H_DUPLICATE_TESTED=""
+H_TRUST_ANSWER=""
+
+# Scratch globals used instead of command substitution, so that no output
+# is produced in a subshell where the emitter would be unreachable.
+JS=""
+JA=""
+CJ=""
+UC=""
+TRIMMED=""
+RUN_OUT=""
+RUN_ERR=""
+RUN_RC=0
+RUN_OUT_FILE=""
+DET_INSTALLED=0
+DET_PATH=""
+DET_VERSION=""
+DET_RC=0
+PEFF_LEN=0
+PROMPT_BYTES=0
+PANE_DEAD=0
+PANE_STATUS=""
+PANE_PID=""
+declare -a CAP_LINES=()
+CAP_TEXT=""
+
+# ===========================================================================
+# 2. Emitter and log
+# ===========================================================================
+
+declare -A JSON_CTL_MAP=()
+JSON_CTL=""
+init_json_ctl() {
+  local i c e
+  for i in 1 2 3 4 5 6 7 8 11 12 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31; do
+    printf -v c '%b' "\\0$(printf '%03o' "$i")"
+    printf -v e '\\u%04x' "$i"
+    JSON_CTL_MAP[$c]=$e
+    JSON_CTL+=$c
+  done
+}
+
+# Replaces byte sequences that are not valid UTF-8 with U+FFFD. Pane text
+# and process arguments are copied verbatim, and a single broken sequence
+# would make the whole output undecodable for the caller.
+utf8_clean() {
+  local LC_ALL=C
+  local s=$1
+  case $s in
+    *[$'\200'-$'\377']*) ;;
+    *) UC=$s; return 0 ;;
+  esac
+  local n=${#s} i=0 out="" b v need lo hi ok j w
+  n=${#s}
+  while ((i < n)); do
+    b=${s:i:1}
+    printf -v v '%d' "'$b"
+    if ((v < 0x80)); then
+      out+=$b
+      ((i++))
+      continue
+    fi
+    lo=0x80
+    hi=0xbf
+    if ((v >= 0xc2 && v <= 0xdf)); then
+      need=1
+    elif ((v == 0xe0)); then
+      need=2
+      lo=0xa0
+    elif ((v == 0xed)); then
+      need=2
+      hi=0x9f
+    elif ((v >= 0xe1 && v <= 0xef)); then
+      need=2
+    elif ((v == 0xf0)); then
+      need=3
+      lo=0x90
+    elif ((v == 0xf4)); then
+      need=3
+      hi=0x8f
+    elif ((v >= 0xf1 && v <= 0xf3)); then
+      need=3
+    else
+      out+=$'\357\277\275'
+      ((i++))
+      continue
+    fi
+    ok=1
+    for ((j = 1; j <= need; j++)); do
+      if ((i + j >= n)); then ok=0; break; fi
+      printf -v w '%d' "'${s:i+j:1}"
+      if ((j == 1)); then
+        if ((w < lo || w > hi)); then ok=0; break; fi
+      elif ((w < 0x80 || w > 0xbf)); then
+        ok=0
+        break
+      fi
+    done
+    if ((ok)); then
+      out+=${s:i:need+1}
+      ((i += need + 1))
+    else
+      out+=$'\357\277\275'
+      ((i++))
+    fi
+  done
+  UC=$out
+}
+
+# JSON string literal, result in JS. NUL cannot occur in a bash string and
+# is therefore dropped before this point.
+jstr() {
+  utf8_clean "$1"
+  local s=$UC k
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\r'/\\r}
+  s=${s//$'\t'/\\t}
+  if [[ $s == *[$JSON_CTL]* ]]; then
+    for k in "${!JSON_CTL_MAP[@]}"; do
+      if [[ $s == *"$k"* ]]; then s=${s//"$k"/${JSON_CTL_MAP[$k]}}; fi
+    done
+  fi
+  JS="\"$s\""
+}
+
+# JSON array of strings, result in JA
+json_arr() {
+  local out="[" first=1 x
+  for x in "$@"; do
+    jstr "$x"
+    if ((first)); then first=0; else out+=","; fi
+    out+=$JS
+  done
+  JA="$out]"
+}
+
+# JSON array of child process objects from EMIT_CHILDREN, result in CJ
+children_json() {
+  local out="[" first=1 rec r cpid comm args
+  for rec in ${EMIT_CHILDREN[@]+"${EMIT_CHILDREN[@]}"}; do
+    r=$rec
+    cpid=${r%%|*}
+    r=${r#*|}
+    comm=${r%%|*}
+    args=${r#*|}
+    if ((first)); then first=0; else out+=","; fi
+    out+="{\"pid\":$cpid,\"comm\":"
+    jstr "$comm"
+    out+="$JS,\"args\":"
+    jstr "$args"
+    out+="$JS}"
+  done
+  CJ="$out]"
+}
+
+# emit <type> [<name>=<spec>:<value> ...]
+#
+# Specs: s string, n number, b boolean, z null, r raw JSON, a the array in
+# EMIT_LINES, p the child process records in EMIT_CHILDREN. user_relevant
+# defaults to false. The emitter is the only writer on stdout.
+emit() {
+  local mtype=$1
+  shift
+  local -a names=() specs=()
+  local -A F=()
+  local a nm rest sp i json line color show l rec r cpid comm args
+  for a in "$@"; do
+    nm=${a%%=*}
+    rest=${a#*=}
+    sp=${rest%%:*}
+    names+=("$nm")
+    specs+=("$sp")
+    F[$nm]=${rest#*:}
+  done
+  if [[ -z ${F[user_relevant]+x} ]]; then
+    names+=(user_relevant)
+    specs+=(b)
+    F[user_relevant]=false
+  fi
+
+  jstr "$mtype"
+  json="{\"type\":$JS"
+  for ((i = 0; i < ${#names[@]}; i++)); do
+    nm=${names[i]}
+    jstr "$nm"
+    json+=",$JS:"
+    case ${specs[i]} in
+      s) jstr "${F[$nm]}"; json+=$JS ;;
+      n | b | r) json+=${F[$nm]} ;;
+      z) json+="null" ;;
+      a) json_arr ${EMIT_LINES[@]+"${EMIT_LINES[@]}"}; json+=$JA ;;
+      p) children_json; json+=$CJ ;;
+    esac
+  done
+  json+="}"
+
+  log_write "$json"
+
+  show=1
+  case $mtype in
+    invocation | env) show=0 ;;
+    debug | timing) ((VERBOSE)) || show=0 ;;
+  esac
+  ((show)) || return 0
+
+  if [[ $OUT_MODE == json ]]; then
+    if ((STDOUT_COUNT > 0)); then printf ',\n'; fi
+    printf '%s\n' "$json"
+    ((STDOUT_COUNT++))
+    return 0
+  fi
+
+  line=""
+  color=""
+  case $mtype in
+    info)
+      line=${F[msg]}
+      if [[ -n ${F[files]+x} && -n ${F[bytes]+x} ]]; then
+        line+=" (${F[files]} files, ${F[bytes]} bytes)"
+      fi
+      ;;
+    warn) color=$C_YELLOW; line="warning: ${F[msg]}" ;;
+    error) color=$C_RED; line="error: ${F[msg]}" ;;
+    fatal) color=$C_RED; line="fatal: ${F[msg]}" ;;
+    debug) line="debug: ${F[msg]}" ;;
+    timing) line="timing: ${F[step]} ${F[ms]}ms" ;;
+    harness.detected)
+      l=${F[version]}
+      [[ -n $l ]] || l="version unknown"
+      line="${F[key]}  $l  ${F[path]}  (${F[description]})"
+      ;;
+    harness.missing) line="${F[key]}  not installed  (${F[description]})" ;;
+    model.available)
+      line="${F[harness]}/${F[key]}  ${F[description]}  [catalog ${F[catalog_updated]}]"
+      ;;
+    agent.starting)
+      line="starting ${F[harness]} in ${F[folder]}"
+      [[ ${F[resume]} == true ]] && line+=" (resume)"
+      [[ -n ${F[model]} ]] && line+=" model ${F[model]}"
+      [[ -n ${F[prompt_file]} ]] && line+=" prompt ${F[prompt_file]}"
+      ;;
+    agent.pane) line="session ${F[session]} awaiting ${F[awaiting]}" ;;
+    agent.prompt_sent) line="prompt sent to ${F[session]} (${F[bytes]} bytes)" ;;
+    agent.prompt_deferred)
+      line="prompt not delivered to ${F[session]} (${F[delivery]})"
+      ;;
+    agent.exited)
+      l=${F[exit_status]}
+      [[ -n $l ]] || l="unknown"
+      line="harness exited in ${F[session]} with status $l"
+      ;;
+    agent.started) line="started ${F[session]} pane_pid ${F[pane_pid]}" ;;
+    harness.duplicated)
+      line="duplicated ${F[key]} session store: ${F[files]} files, ${F[bytes]} bytes"
+      ;;
+    version) line="peeragent ${F[version]}" ;;
+  esac
+
+  if ((COLOR)) && [[ -n $color ]]; then
+    printf '%s%s%s\n' "$color" "$line" "$C_RESET"
+  else
+    printf '%s\n' "$line"
+  fi
+
+  case $mtype in
+    agent.pane | agent.exited)
+      for l in ${EMIT_LINES[@]+"${EMIT_LINES[@]}"}; do printf '  %s\n' "$l"; done
+      ;;
+    agent.started)
+      for rec in ${EMIT_CHILDREN[@]+"${EMIT_CHILDREN[@]}"}; do
+        r=$rec
+        cpid=${r%%|*}
+        r=${r#*|}
+        comm=${r%%|*}
+        args=${r#*|}
+        printf '  %s %s %s\n' "$cpid" "$comm" "$args"
+      done
+      ;;
+  esac
+
+  if [[ -n ${F[hint]+x} && -n ${F[hint]} ]]; then
+    printf '  hint: %s\n' "${F[hint]}"
+  fi
+  return 0
+}
+
+log_write() {
+  ((LOG_ENABLED)) || return 0
+  if ((LOG_OPEN == 0)); then
+    LOG_BUFFER+=("$1")
+    return 0
+  fi
+  if ((LOG_COUNT > 0)); then printf ',\n' >&9; fi
+  printf '%s\n' "$1" >&9
+  ((LOG_COUNT++))
+  return 0
+}
+
+log_setup() {
+  if ((NO_LOG)); then
+    LOG_ENABLED=0
+    return 0
+  fi
+  return 0
+}
+
+log_open() {
+  ((LOG_ENABLED)) || return 0
+  ((LOG_OPEN)) && return 0
+  local path=$LOG_PATH dir stamp b
+  if [[ -z $path ]]; then
+    dir="$HOME_DIR/.local/state/peeragent/logs"
+    mkdir -p -- "$dir" 2>/dev/null
+    chmod 700 -- "$dir" 2>/dev/null
+    stamp=$(date -u +%Y-%m-%d_%H%M%S 2>/dev/null) || stamp="unknown"
+    path="$dir/${stamp}_${LOG_ACTION}_$$.jsonl"
+  fi
+  if ! (: >>"$path") 2>/dev/null; then
+    LOG_ENABLED=0
+    LOG_BUFFER=()
+    emit warn msg=s:"could not open the log file: $path" user_relevant=b:true \
+      hint=s:"create the directory or pass --log-file with a writable path; the run continues without a log"
+    return 0
+  fi
+  exec 9>>"$path"
+  LOG_OPEN=1
+  LOG_COUNT=0
+  printf '[\n' >&9
+  emit_invocation
+  emit_env
+  for b in ${LOG_BUFFER[@]+"${LOG_BUFFER[@]}"}; do
+    if ((LOG_COUNT > 0)); then printf ',\n' >&9; fi
+    printf '%s\n' "$b" >&9
+    ((LOG_COUNT++))
+  done
+  LOG_BUFFER=()
+  return 0
+}
+
+emit_invocation() {
+  local stamp
+  stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) || stamp=""
+  json_arr peeragent ${INVOCATION_ARGS[@]+"${INVOCATION_ARGS[@]}"}
+  emit invocation "argv=r:$JA" timestamp=s:"$stamp" pid=n:"$PEERAGENT_PID" \
+    cwd=s:"$PWD"
+}
+
+# env.vars keeps a fixed set of names plus the harness and provider
+# prefixes; values whose name looks like a secret are masked.
+env_vars_json() {
+  local -A seen=() envmap=()
+  local kv name val out="{" first=1 n
+  if [[ -r /proc/self/environ ]]; then
+    while IFS= read -r -d '' kv; do
+      name=${kv%%=*}
+      envmap[$name]=${kv#*=}
+    done </proc/self/environ
+  fi
+  envmap[LC_ALL]=$LC_ALL
+  local -a fixed=(PATH SHELL TERM LANG LC_ALL TMUX HOME)
+  local -a picked=()
+  for n in "${fixed[@]}"; do
+    if [[ -n ${envmap[$n]+x} && -z ${seen[$n]+x} ]]; then
+      seen[$n]=1
+      picked+=("$n")
+    fi
+  done
+  for n in "${!envmap[@]}"; do
+    case $n in
+      PEERAGENT_* | CLAUDE_* | CODEX_* | GEMINI_* | OPENCODE_* | COPILOT_* | ANTHROPIC_* | OPENAI_* | GH_* | GITHUB_*)
+        if [[ -z ${seen[$n]+x} ]]; then
+          seen[$n]=1
+          picked+=("$n")
+        fi
+        ;;
+    esac
+  done
+  for n in "${picked[@]}"; do
+    val=${envmap[$n]}
+    case ${n^^} in
+      *TOKEN* | *KEY* | *SECRET* | *PASS* | *AUTH* | *CREDENTIAL*) val="<redacted>" ;;
+    esac
+    if ((first)); then first=0; else out+=","; fi
+    jstr "$n"
+    out+="$JS:"
+    jstr "$val"
+    out+=$JS
+  done
+  ENV_VARS="$out}"
+}
+
+emit_env() {
+  local tv="" gv="" p
+  p=$(type -P tmux 2>/dev/null) || p=""
+  if [[ -n $p ]]; then
+    if [[ -n $TMUX_VERSION ]]; then
+      tv=$TMUX_VERSION
+    else
+      run "$TIMEOUT_TMUX" "$p" -V
+      if ((RUN_RC == 0)); then
+        trim4 "${RUN_OUT#tmux }"
+        tv=$TRIMMED
+      fi
+    fi
+  fi
+  p=$(type -P git 2>/dev/null) || p=""
+  if [[ -n $p ]]; then
+    if [[ -n $GIT_VERSION ]]; then
+      gv=$GIT_VERSION
+    else
+      run "$TIMEOUT_GIT" "$p" --version
+      if ((RUN_RC == 0)); then
+        trim4 "${RUN_OUT#git version }"
+        gv=$TRIMMED
+      fi
+    fi
+  fi
+  env_vars_json
+  local -a f=(impl=s:"$PEERAGENT_IMPL" impl_version=s:"$BASH_VERSION"
+    peeragent_version=s:"$PEERAGENT_VERSION")
+  if [[ -n $tv ]]; then f+=(tmux=s:"$tv"); else f+=(tmux=z:); fi
+  if [[ -n $gv ]]; then f+=(git=s:"$gv"); else f+=(git=z:); fi
+  f+=(gh=z: "vars=r:$ENV_VARS")
+  emit env "${f[@]}"
+}
+
+timing() {
+  local step=$1 start=$2 now
+  now_ms
+  emit timing step=s:"$step" ms=n:"$((NOW_MS - start))"
+}
+
+fatal() {
+  local code=$1 msg=$2 hint=${3-}
+  if ((NO_LOG)); then
+    if [[ -n $hint ]]; then
+      hint="$hint; re-run without --no-log to capture a log file"
+    else
+      hint="re-run without --no-log to capture a log file"
+    fi
+  fi
+  emit fatal msg=s:"$msg" hint=s:"$hint" user_relevant=b:true
+  exit "$code"
+}
+
+finish() {
+  ((FINISHED)) && return 0
+  FINISHED=1
+  if [[ -n $PASTE_BUFFER ]]; then
+    local p
+    p=$(type -P tmux 2>/dev/null) || p=""
+    if [[ -n $p ]]; then
+      timeout "$TIMEOUT_TMUX" "$p" -u delete-buffer -b "$PASTE_BUFFER" \
+        >/dev/null 2>&1 </dev/null
+    fi
+    PASTE_BUFFER=""
+  fi
+  if ((LOG_ENABLED)) && ((LOG_OPEN == 0)); then log_open; fi
+  if ((LOG_ENABLED)) && ((LOG_OPEN)); then
+    printf ']\n' >&9
+    exec 9>&-
+    LOG_OPEN=0
+  fi
+  if [[ $OUT_MODE == json ]] && ((ARRAY_OPEN)); then
+    printf ']\n'
+    ARRAY_OPEN=0
+  fi
+  if [[ -n $TMPD && -d $TMPD ]]; then rm -rf -- "$TMPD"; fi
+  return 0
+}
+
+on_exit() {
+  local rc=$?
+  [[ $$ == "$PEERAGENT_PID" ]] || return 0
+  finish
+  return "$rc"
+}
+
+# The frame is closed under every signal except SIGKILL, so that a reader
+# never sees a truncated array. A running session is left alone.
+on_signal() {
+  local n=$1
+  [[ $$ == "$PEERAGENT_PID" ]] || exit $((128 + n))
+  trap - INT TERM HUP
+  finish
+  exit $((128 + n))
+}
+
+# ===========================================================================
+# 3. Helpers
+# ===========================================================================
+
+NOW_MS=0
+now_ms() {
+  local t
+  t=$(date +%s%3N 2>/dev/null) || t=0
+  NOW_MS=$((10#${t:-0}))
+}
+
+ensure_tmpd() {
+  [[ -n $TMPD ]] && return 0
+  local base=${TMPDIR:-/tmp}
+  [[ -d $base ]] || base=/tmp
+  TMPD=$(mktemp -d "$base/peeragent.$$.XXXXXX" 2>/dev/null) || TMPD=""
+  [[ -n $TMPD ]]
+}
+
+# Single call path for every external program: stdin closed, timeout,
+# output captured and never passed through.
+run() {
+  local to=$1
+  shift
+  RUN_OUT=""
+  RUN_ERR=""
+  RUN_RC=0
+  if ! ensure_tmpd; then
+    RUN_RC=127
+    return 0
+  fi
+  RUN_OUT_FILE="$TMPD/run.out"
+  local ef="$TMPD/run.err"
+  timeout "$to" "$@" >"$RUN_OUT_FILE" 2>"$ef" </dev/null
+  RUN_RC=$?
+  RUN_OUT=$(<"$RUN_OUT_FILE")
+  RUN_ERR=$(<"$ef")
+  return 0
+}
+
+# git is the only program that gets extra environment, so that it never
+# asks for credentials on a terminal nobody is watching.
+run_git() {
+  local to=$1
+  shift
+  RUN_OUT=""
+  RUN_ERR=""
+  RUN_RC=0
+  if ! ensure_tmpd; then
+    RUN_RC=127
+    return 0
+  fi
+  RUN_OUT_FILE="$TMPD/run.out"
+  local ef="$TMPD/run.err"
+  GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/true \
+    timeout "$to" "$@" >"$RUN_OUT_FILE" 2>"$ef" </dev/null
+  RUN_RC=$?
+  RUN_OUT=$(<"$RUN_OUT_FILE")
+  RUN_ERR=$(<"$ef")
+  return 0
+}
+
+trim4() {
+  local s=$1
+  s=${s#"${s%%[!$WS4]*}"}
+  s=${s%"${s##*[!$WS4]}"}
+  TRIMMED=$s
+}
+
+trim_right() {
+  local s=$1
+  s=${s%"${s##*[!$RWS]}"}
+  TRIMMED=$s
+}
+
+abs_path() {
+  local p
+  p=$(realpath -m -- "$1" 2>/dev/null) || p="$1"
+  ABS=$p
+}
+ABS=""
+
+# Session store keys of claude are built from the absolute path with every
+# character outside the alphanumerics replaced by a dash.
+path_slug() {
+  SLUG=${1//[^a-zA-Z0-9]/-}
+}
+SLUG=""
+
+rand_hex8() {
+  local u=""
+  if [[ -r /proc/sys/kernel/random/uuid ]]; then u=$(</proc/sys/kernel/random/uuid); fi
+  if [[ -z $u ]]; then
+    printf -v u '%08x' $((RANDOM * 65536 + RANDOM))
+  fi
+  u=${u//-/}
+  HEX8=${u:0:8}
+}
+HEX8=""
+
+# 48 bit millisecond timestamp, version nibble, random tail. Kept here
+# because a session store key has to be new but sortable by creation time.
+uuid7() {
+  local ms hex rnd a b c d e
+  ms=$(date +%s%3N 2>/dev/null) || ms=0
+  printf -v hex '%012x' "$((10#${ms:-0}))"
+  rnd=""
+  if [[ -r /proc/sys/kernel/random/uuid ]]; then rnd=$(</proc/sys/kernel/random/uuid); fi
+  rnd=${rnd//-/}
+  while ((${#rnd} < 32)); do
+    printf -v a '%04x' $((RANDOM))
+    rnd+=$a
+  done
+  a=${hex:0:8}
+  b=${hex:8:4}
+  c="7${rnd:0:3}"
+  printf -v d '%x' $((0x8 + (16#${rnd:3:1} % 4)))
+  d="$d${rnd:4:3}"
+  e=${rnd:7:12}
+  UUID7="$a-$b-$c-$d-$e"
+}
+UUID7=""
+
+# Effective prompt length: trim, split on the four whitespace code points,
+# drop tokens that start with a slash so that absolute paths cost nothing,
+# join the rest with single spaces and count code points.
+prompt_effective_length() {
+  trim4 "$1"
+  local s=$TRIMMED t joined="" first=1 restore_f=1
+  local -a toks=() keep=()
+  case $- in *f*) restore_f=0 ;; esac
+  set -f
+  local old_ifs=$IFS
+  IFS=$WS4
+  # Intentional word splitting; globbing is off.
+  toks=($s)
+  IFS=$old_ifs
+  ((restore_f)) && set +f
+  for t in ${toks[@]+"${toks[@]}"}; do
+    [[ $t == /* ]] && continue
+    keep+=("$t")
+  done
+  for t in ${keep[@]+"${keep[@]}"}; do
+    if ((first)); then first=0; joined=$t; else joined+=" $t"; fi
+  done
+  PEFF_LEN=${#joined}
+}
+
+# files counts regular files without symlinks, bytes their size from
+# lstat, because the copy keeps symlinks as symlinks.
+tree_measure() {
+  local d=$1 n=0 b=0 sz
+  if [[ -d $d ]]; then
+    while IFS= read -r -d '' sz; do
+      n=$((n + 1))
+      b=$((b + sz))
+    done < <(find "$d" -type f -printf '%s\0' 2>/dev/null)
+  fi
+  printf '%s|%s' "$n" "$b"
+}
+
+# Top level entry names, hidden ones included, for the cheap check that a
+# destination which already exists is the same workspace.
+list_top() {
+  local d=$1
+  (
+    shopt -s nullglob dotglob
+    local -a e=("$d"/*)
+    local x
+    for x in ${e[@]+"${e[@]}"}; do printf '%s\n' "${x##*/}"; done
+  ) | LC_ALL=C sort
+}
+
+join_lines() {
+  local out="" first=1 l
+  for l in ${CAP_LINES[@]+"${CAP_LINES[@]}"}; do
+    if ((first)); then first=0; out=$l; else out+=$'\n'$l; fi
+  done
+  CAP_TEXT=$out
+}
+
+handler_known() {
+  [[ " $HANDLER_KEYS " == *" $1 "* ]]
+}
+
+load_handler() {
+  local meta
+  meta=$("h_${1}_meta")
+  IFS='|' read -r H_DESCRIPTION H_BINARY H_PROMPT_DELIVERY H_RESUME_SUPPORT \
+    H_DUPLICATE_SUPPORT H_DUPLICATE_TESTED H_TRUST_ANSWER <<<"$meta"
+  H_KEY=$1
+}
+
+handler_hint() {
+  HINT_TEXT=$("h_${1}_${2}")
+}
+HINT_TEXT=""
+
+# Detection shared by all handlers: look the binary up in PATH, then ask
+# it for its version. The version line is the first line of stdout;
+# stderr is discarded, because one harness writes a warning there.
+detect_binary() {
+  DET_INSTALLED=0
+  DET_PATH=""
+  DET_VERSION=""
+  DET_RC=0
+  local p
+  p=$(type -P -- "$1" 2>/dev/null) || p=""
+  [[ -n $p ]] || return 0
+  DET_INSTALLED=1
+  DET_PATH=$p
+  run "$TIMEOUT_DETECT" "$p" --version
+  DET_RC=$RUN_RC
+  if ((RUN_RC == 0)); then
+    trim4 "${RUN_OUT%%$'\n'*}"
+    DET_VERSION=$TRIMMED
+  fi
+  return 0
+}
+
+# ===========================================================================
+# 4. Model catalogs
+# ===========================================================================
+
+catalog_claude() {
+  cat <<'EOF'
+default|Account default (Opus 5 on Max/Team/Enterprise/API, Sonnet 5 on Pro)
+best|Fable 5 where available, otherwise newest Opus
+fable|Claude Fable 5 (opt-in)
+opus|Newest Opus
+sonnet|Newest Sonnet
+haiku|Newest Haiku
+opus[1m]|Opus with 1M token context
+sonnet[1m]|Sonnet with 1M token context
+opusplan|Opus for plan mode, Sonnet for execution
+claude-opus-5|Claude Opus 5
+claude-sonnet-5|Claude Sonnet 5
+claude-fable-5|Claude Fable 5
+claude-opus-4-8|Claude Opus 4.8
+claude-opus-4-7|Claude Opus 4.7
+claude-sonnet-4-5|Claude Sonnet 4.5
+claude-haiku-4-5|Claude Haiku 4.5
+EOF
+}
+
+catalog_codex() {
+  cat <<'EOF'
+gpt-5.6-sol|Flagship, deepest reasoning, complex coding
+gpt-5.6-terra|Balanced everyday model
+gpt-5.6-luna|Fast and cheap
+gpt-5.3-codex-spark|Research preview, near-instant iteration (ChatGPT Pro)
+gpt-5.5|Prior flagship (ChatGPT plans only)
+gpt-5.4|Legacy, retires 2026-08-31
+gpt-5.4-mini|Legacy fast and cheap
+gpt-5.3-codex|Prior codex-specialist model
+gpt-5-codex|Canonical example ID in the official docs
+EOF
+}
+
+catalog_agy() {
+  cat <<'EOF'
+Gemini 3.1 Pro|Gemini 3.1 Pro
+Gemini 3.1 Pro (High)|Gemini 3.1 Pro, high effort
+Gemini 3.7 Flash|Gemini 3.7 Flash
+Gemini 3.6 Flash|Gemini 3.6 Flash
+Gemini 3.5 Flash|Gemini 3.5 Flash
+Claude Opus 4.6 (Thinking)|Claude Opus 4.6 with thinking (paid plans)
+Claude Sonnet 4.6 (Thinking)|Claude Sonnet 4.6 with thinking (paid plans)
+GPT-OSS-120b|Open-weight GPT-OSS 120b
+EOF
+}
+
+catalog_opencode() {
+  cat <<'EOF'
+anthropic/claude-opus-5|Anthropic Claude Opus 5
+anthropic/claude-sonnet-5|Anthropic Claude Sonnet 5
+anthropic/claude-sonnet-4-5|Anthropic Claude Sonnet 4.5
+anthropic/claude-haiku-4-5|Anthropic Claude Haiku 4.5
+openai/gpt-5.6-sol|OpenAI GPT-5.6 Sol
+openai/gpt-5.3-codex|OpenAI GPT-5.3 Codex
+openai/gpt-5-codex|OpenAI GPT-5 Codex
+google/gemini-3-pro|Google Gemini 3 Pro
+opencode/big-pickle|OpenCode Zen Big Pickle (free tier, no login)
+EOF
+}
+
+catalog_copilot() {
+  cat <<'EOF'
+claude-opus-5|Claude Opus 5 via Copilot
+claude-opus-4.6|Claude Opus 4.6 via Copilot
+claude-sonnet-4.6|Claude Sonnet 4.6 via Copilot
+claude-sonnet-4.5|Claude Sonnet 4.5 via Copilot
+claude-haiku-4.5|Claude Haiku 4.5 via Copilot
+gpt-5.3-codex|GPT-5.3 Codex via Copilot
+gpt-5-mini|GPT-5 mini via Copilot
+gpt-4.1|GPT-4.1 via Copilot
+gemini-3-pro|Gemini 3 Pro via Copilot
+kimi-k3|Kimi K3 via Copilot
+EOF
+}
+
+# ===========================================================================
+# 5. Handler contract and handler sections
+#
+# Every harness specific decision lives here. The core knows the contract
+# and the registry order, never a harness name.
+#
+#   h_<key>_meta                     description|binary|prompt_delivery|
+#                                    resume_support|duplicate_support|
+#                                    duplicate_tested|trust_answer
+#   h_<key>_resume_hint              text or nothing
+#   h_<key>_duplicate_refusal_hint   text or nothing
+#   h_<key>_resume_failure_hint      text or nothing
+#   h_<key>_detect                   installed|path|version
+#   h_<key>_list_models              one key|description|catalog_updated per line
+#   h_<key>_launch_argv F R          argv, NUL separated
+#   h_<key>_model_argv M             argv, NUL separated
+#   h_<key>_prompt_prefix_argv       argv, NUL separated
+#   h_<key>_detect_prompt_type       pane text on stdin, prints one token
+#   h_<key>_session_store_exists P   exit status 0 means it exists
+#   h_<key>_duplicate_session S D    status|files|bytes|session_dir
+#
+# Handlers never emit and never write to stdout other than their return
+# value.
+# ===========================================================================
+
+emit_detect_line() {
+  printf '%s|%s|%s\n' "$DET_INSTALLED" "$DET_PATH" "$DET_VERSION"
+}
+
+# A line that is exactly the prompt glyph once whitespace is removed is
+# the ready marker of two harnesses. It also stands while they work, so
+# the busy markers win.
+has_ready_glyph() {
+  local text=$1 line
+  while IFS= read -r line; do
+    trim4 "$line"
+    [[ $TRIMMED == "❯" ]] && return 0
+  done <<<"$text"
+  return 1
+}
+
+# --- claude ----------------------------------------------------------------
+
+h_claude_meta() {
+  printf '%s|%s|%s|%s|%s|%s|%s\n' \
+    "Claude Code CLI (Anthropic)" "claude" "argv" "ok" "ok" "true" "Down Enter"
+}
+
+h_claude_resume_hint() { :; }
+
+h_claude_duplicate_refusal_hint() { :; }
+
+h_claude_resume_failure_hint() {
+  printf '%s' "claude resumes the session recorded for the working directory; start again without --resume to open a fresh session there"
+}
+
+h_claude_detect() {
+  detect_binary claude
+  emit_detect_line
+}
+
+h_claude_list_models() { catalog_claude; }
+
+h_claude_launch_argv() {
+  local resume=$2
+  if [[ $resume == 1 ]]; then
+    printf 'claude\0--continue\0'
+  else
+    printf 'claude\0'
+  fi
+}
+
+h_claude_model_argv() {
+  [[ -n $1 ]] || return 0
+  printf '%s\0%s\0' "--model" "$1"
+}
+
+h_claude_prompt_prefix_argv() { :; }
+
+h_claude_detect_prompt_type() {
+  local text
+  text=$(cat)
+  if [[ $text == *"Quick safety check"* || $text == *"Yes, I trust this folder"* ]]; then
+    printf 'trust_prompt\n'
+  elif [[ $text == *"Select login method"* || $text == *"Choose the text style"* ]]; then
+    printf 'auth_prompt\n'
+  elif [[ $text == *"· thinking)"* || $text == *"esc to interrupt"* ]]; then
+    printf 'busy\n'
+  elif has_ready_glyph "$text"; then
+    printf 'ready\n'
+  else
+    printf 'unknown\n'
+  fi
+}
+
+claude_config_dir() {
+  if [[ -n ${CLAUDE_CONFIG_DIR-} ]]; then
+    printf '%s' "$CLAUDE_CONFIG_DIR"
+  else
+    printf '%s' "$HOME_DIR/.claude"
+  fi
+}
+
+h_claude_session_store_exists() {
+  local cfg
+  cfg=$(claude_config_dir)
+  path_slug "$1"
+  [[ -d "$cfg/projects/$SLUG" ]]
+}
+
+h_claude_duplicate_session() {
+  local src=$1 dst=$2 cfg sdir ddir meas
+  cfg=$(claude_config_dir)
+  path_slug "$src"
+  sdir="$cfg/projects/$SLUG"
+  path_slug "$dst"
+  ddir="$cfg/projects/$SLUG"
+  if [[ ! -d $sdir ]]; then
+    printf 'ok|0|0|\n'
+    return 0
+  fi
+  mkdir -p -- "$ddir" 2>/dev/null || return 1
+  cp -a -- "$sdir/." "$ddir/" 2>/dev/null || return 1
+  meas=$(tree_measure "$ddir")
+  printf 'ok|%s|%s\n' "$meas" "$ddir"
+}
+
+# --- codex -----------------------------------------------------------------
+
+h_codex_meta() {
+  printf '%s|%s|%s|%s|%s|%s|%s\n' \
+    "OpenAI Codex CLI" "codex" "argv" "experimental" "unsupported" "false" "1"
+}
+
+h_codex_resume_hint() {
+  printf '%s' "codex resumes the session it used last; in a directory without its own session store that can be the session of another directory - check the first screen before you rely on it"
+}
+
+h_codex_duplicate_refusal_hint() {
+  printf '%s' "codex indexes sessions in ~/.codex/state_5.sqlite, which peeragent does not modify; copy the folder yourself with 'cp -a' and use 'codex resume --all <id>' there"
+}
+
+h_codex_resume_failure_hint() {
+  printf '%s' "start again without --resume; codex resume picks the session it used last and finds nothing when there is none"
+}
+
+h_codex_detect() {
+  detect_binary codex
+  emit_detect_line
+}
+
+h_codex_list_models() { catalog_codex; }
+
+# -C sets the directory the harness treats as its root; the scope of its
+# trust question follows the git root of that path.
+h_codex_launch_argv() {
+  local folder=$1 resume=$2
+  printf 'codex\0-C\0%s\0' "$folder"
+  if [[ $resume == 1 ]]; then
+    printf 'resume\0--last\0'
+  fi
+}
+
+h_codex_model_argv() {
+  [[ -n $1 ]] || return 0
+  printf '%s\0%s\0' "-m" "$1"
+}
+
+h_codex_prompt_prefix_argv() { :; }
+
+h_codex_detect_prompt_type() {
+  local text
+  text=$(cat)
+  if [[ $text == *"Do you trust the contents of this directory"* ]]; then
+    printf 'trust_prompt\n'
+  elif [[ $text == *"Sign in with ChatGPT"* ]]; then
+    printf 'auth_prompt\n'
+  else
+    printf 'unknown\n'
+  fi
+}
+
+codex_home_dir() {
+  if [[ -n ${CODEX_HOME-} ]]; then
+    printf '%s' "$CODEX_HOME"
+  else
+    printf '%s' "$HOME_DIR/.codex"
+  fi
+}
+
+h_codex_session_store_exists() {
+  local home
+  home=$(codex_home_dir)
+  [[ -d "$home/sessions" ]] || return 1
+  grep -r -q -F --include='rollout-*.jsonl' -- "\"cwd\":\"$1\"" \
+    "$home/sessions" 2>/dev/null
+}
+
+h_codex_duplicate_session() {
+  printf 'unsupported|0|0|\n'
+  return 1
+}
+
+# --- agy -------------------------------------------------------------------
+
+h_agy_meta() {
+  printf '%s|%s|%s|%s|%s|%s|%s\n' \
+    "Google Antigravity CLI" "agy" "send_keys" "experimental" "unsupported" "false" ""
+}
+
+h_agy_resume_hint() {
+  printf '%s' "resume is documented but untested for this harness; check the first screen before you rely on the history being there"
+}
+
+h_agy_duplicate_refusal_hint() {
+  printf '%s' "the session store layout of this harness is unknown, so peeragent will not copy it; copy the folder yourself with 'cp -a' and start a fresh session there"
+}
+
+h_agy_resume_failure_hint() {
+  printf '%s' "start again without --resume; this harness has no session store that peeragent can carry over"
+}
+
+h_agy_detect() {
+  detect_binary agy
+  emit_detect_line
+}
+
+h_agy_list_models() { catalog_agy; }
+
+h_agy_launch_argv() {
+  local resume=$2
+  if [[ $resume == 1 ]]; then
+    printf 'agy\0--continue\0'
+  else
+    printf 'agy\0'
+  fi
+}
+
+h_agy_model_argv() {
+  [[ -n $1 ]] || return 0
+  printf '%s\0%s\0' "--model" "$1"
+}
+
+h_agy_prompt_prefix_argv() { :; }
+
+h_agy_detect_prompt_type() {
+  local text
+  text=$(cat)
+  if [[ $text == *"Select login method"* || $text == *"not signed in"* ]]; then
+    printf 'auth_prompt\n'
+  else
+    printf 'unknown\n'
+  fi
+}
+
+h_agy_session_store_exists() { return 1; }
+
+h_agy_duplicate_session() {
+  printf 'unsupported|0|0|\n'
+  return 1
+}
+
+# --- opencode --------------------------------------------------------------
+
+h_opencode_meta() {
+  printf '%s|%s|%s|%s|%s|%s|%s\n' \
+    "OpenCode (anomalyco)" "opencode" "send_keys" "experimental" "unsupported" "false" ""
+}
+
+h_opencode_resume_hint() {
+  printf '%s' "resume is documented but untested for this harness; check the first screen before you rely on the history being there"
+}
+
+h_opencode_duplicate_refusal_hint() {
+  printf '%s' "this harness keeps its sessions in a database without a documented schema, so peeragent will not copy it; copy the folder yourself with 'cp -a' and start a fresh session there"
+}
+
+h_opencode_resume_failure_hint() {
+  printf '%s' "start again without --resume; this harness continues the last session of the project and finds nothing when there is none"
+}
+
+h_opencode_detect() {
+  detect_binary opencode
+  emit_detect_line
+}
+
+h_opencode_list_models() { catalog_opencode; }
+
+h_opencode_launch_argv() {
+  local resume=$2
+  if [[ $resume == 1 ]]; then
+    printf 'opencode\0--continue\0'
+  else
+    printf 'opencode\0'
+  fi
+}
+
+h_opencode_model_argv() {
+  [[ -n $1 ]] || return 0
+  printf '%s\0%s\0' "-m" "$1"
+}
+
+h_opencode_prompt_prefix_argv() { :; }
+
+h_opencode_detect_prompt_type() {
+  local text
+  text=$(cat)
+  if [[ $text == *"Run /connect"* ]]; then
+    printf 'provider_prompt\n'
+  elif [[ $text == *"Ask anything"* ]]; then
+    printf 'ready\n'
+  else
+    printf 'unknown\n'
+  fi
+}
+
+h_opencode_session_store_exists() { return 1; }
+
+h_opencode_duplicate_session() {
+  printf 'unsupported|0|0|\n'
+  return 1
+}
+
+# --- copilot ---------------------------------------------------------------
+
+h_copilot_meta() {
+  printf '%s|%s|%s|%s|%s|%s|%s\n' \
+    "GitHub Copilot CLI" "copilot" "argv" "experimental" "unsupported" "false" "1"
+}
+
+h_copilot_resume_hint() {
+  printf '%s' "without a session for the working directory this harness falls back to the most recent session anywhere; check the first screen before you rely on it"
+}
+
+h_copilot_duplicate_refusal_hint() {
+  printf '%s' "copilot indexes sessions in ~/.copilot/session-store.db, which peeragent does not modify; copy the folder yourself with 'cp -a' and use 'copilot --resume <id>' there"
+}
+
+h_copilot_resume_failure_hint() {
+  printf '%s' "start again without --resume; the harness found no session for the working directory"
+}
+
+h_copilot_detect() {
+  detect_binary copilot
+  emit_detect_line
+}
+
+h_copilot_list_models() { catalog_copilot; }
+
+h_copilot_launch_argv() {
+  local folder=$1 resume=$2
+  printf 'copilot\0-C\0%s\0' "$folder"
+  if [[ $resume == 1 ]]; then
+    printf -- '--continue\0'
+  fi
+}
+
+h_copilot_model_argv() {
+  [[ -n $1 ]] || return 0
+  printf '%s\0%s\0' "--model" "$1"
+}
+
+h_copilot_prompt_prefix_argv() {
+  printf -- '-i\0'
+}
+
+h_copilot_detect_prompt_type() {
+  local text
+  text=$(cat)
+  if [[ $text == *"Confirm folder trust"* ]]; then
+    printf 'trust_prompt\n'
+  elif [[ $text == *"Please use /login to sign in to use Copilot"* ]]; then
+    printf 'auth_prompt\n'
+  elif [[ $text == *"esc interrupt"* ]]; then
+    printf 'busy\n'
+  elif has_ready_glyph "$text"; then
+    printf 'ready\n'
+  else
+    printf 'unknown\n'
+  fi
+}
+
+copilot_home_dir() {
+  if [[ -n ${COPILOT_HOME-} ]]; then
+    printf '%s' "$COPILOT_HOME"
+  else
+    printf '%s' "$HOME_DIR/.copilot"
+  fi
+}
+
+h_copilot_session_store_exists() {
+  local home f line v
+  home=$(copilot_home_dir)
+  [[ -d "$home/session-state" ]] || return 1
+  shopt -s nullglob
+  local -a files=("$home"/session-state/*/workspace.yaml)
+  shopt -u nullglob
+  for f in ${files[@]+"${files[@]}"}; do
+    while IFS= read -r line; do
+      case $line in
+        *cwd:*) ;;
+        *) continue ;;
+      esac
+      v=${line#*cwd:}
+      trim4 "$v"
+      v=$TRIMMED
+      v=${v%\"}
+      v=${v#\"}
+      v=${v%\'}
+      v=${v#\'}
+      trim4 "$v"
+      [[ $TRIMMED == "$1" ]] && return 0
+    done <"$f"
+  done
+  return 1
+}
+
+h_copilot_duplicate_session() {
+  printf 'unsupported|0|0|\n'
+  return 1
+}
+
+# ===========================================================================
+# 6. Tmux runtime
+# ===========================================================================
+
+# Session commands address "=<name>", window and pane commands
+# "=<name>:". Without the colon tmux reads the argument as a window name
+# and the call fails.
+tmux_run() {
+  run "$TIMEOUT_TMUX" tmux -u "$@"
+}
+
+session_slug() {
+  local folder=$1 base
+  base=${folder%/}
+  base=${base##*/}
+  [[ -n $base ]] || base="workdir"
+  base=${base//[^A-Za-z0-9]/-}
+  base=${base:0:SESSION_SLUG_MAX}
+  [[ -n $base ]] || base="workdir"
+  SLUG=$base
+}
+
+# The session is created with the default shell, gets remain-on-exit, and
+# only then is the harness started into the pane with respawn-pane -k. A
+# harness that dies at once therefore leaves its output and its exit
+# status behind instead of taking the pane with it.
+create_session() {
+  local folder=$1 key=$2
+  shift 2
+  local -a argv=("$@")
+  local attempt sess created=0
+  session_slug "$folder"
+  local slug=$SLUG
+  for ((attempt = 1; attempt <= SESSION_ATTEMPTS; attempt++)); do
+    rand_hex8
+    sess="peeragent-$slug-$key-$HEX8"
+    tmux_run new-session -d -s "$sess" -c "$folder" -x "$PANE_WIDTH" -y "$PANE_HEIGHT"
+    if ((RUN_RC == 0)); then
+      created=1
+      break
+    fi
+    if [[ $RUN_ERR == *"duplicate session"* ]]; then
+      continue
+    fi
+    fatal 1 "could not create the tmux session" \
+      "tmux refused to create the session: ${RUN_ERR:-no error output}; check that the tmux server is reachable"
+  done
+  if ((created == 0)); then
+    fatal 1 "could not find a free session name after $SESSION_ATTEMPTS attempts" \
+      "an unusual number of peeragent sessions is running; list them with 'tmux ls' and remove the ones you no longer need"
+  fi
+  SESSION=$sess
+
+  tmux_run set-option -t "=$sess" mouse on
+  if ((RUN_RC != 0)); then session_setup_failed "set-option mouse"; fi
+  tmux_run set-option -t "=$sess:" -w remain-on-exit on
+  if ((RUN_RC != 0)); then session_setup_failed "set-option remain-on-exit"; fi
+  tmux_run respawn-pane -k -t "=$sess:" -c "$folder" "${argv[@]}"
+  if ((RUN_RC != 0)); then session_setup_failed "respawn-pane"; fi
+  return 0
+}
+SESSION=""
+
+# Removing the session is only safe while no harness runs in it, which is
+# exactly the window between new-session and respawn-pane.
+session_setup_failed() {
+  local what=$1 err=$RUN_ERR
+  tmux_run kill-session -t "=$SESSION"
+  fatal 1 "could not prepare the tmux session ($what)" \
+    "tmux reported: ${err:-no error output}; the session was removed again, no harness was started"
+}
+
+pane_state() {
+  local sess=$1 line
+  PANE_DEAD=0
+  PANE_STATUS=""
+  PANE_PID=""
+  tmux_run list-panes -t "=$sess" -F '#{pane_dead},#{pane_dead_status},#{pane_pid}'
+  ((RUN_RC == 0)) || return 1
+  line=${RUN_OUT%%$'\n'*}
+  PANE_DEAD=${line%%,*}
+  line=${line#*,}
+  PANE_STATUS=${line%%,*}
+  PANE_PID=${line#*,}
+  [[ $PANE_DEAD == 1 ]] || PANE_DEAD=0
+  return 0
+}
+
+# Visible pane content at the fixed size. A dead pane only shows the
+# tmux placeholder in the visible area, so the scrollback is read too and
+# cut to the last non-empty lines.
+capture_pane() {
+  local sess=$1 dead=$2 l
+  CAP_LINES=()
+  local -a raw=()
+  if [[ $dead == 1 ]]; then
+    tmux_run capture-pane -t "=$sess:" -p -S -
+  else
+    tmux_run capture-pane -t "=$sess:" -p
+  fi
+  ((RUN_RC == 0)) || return 1
+  mapfile -t raw <"$RUN_OUT_FILE"
+  local -a out=()
+  for l in ${raw[@]+"${raw[@]}"}; do
+    trim_right "$l"
+    out+=("$TRIMMED")
+  done
+  local i n
+  if [[ $dead == 1 ]]; then
+    local -a keep=()
+    for l in ${out[@]+"${out[@]}"}; do
+      [[ -n $l ]] && keep+=("$l")
+    done
+    n=${#keep[@]}
+    local start=0
+    ((n > DEAD_PANE_LINES)) && start=$((n - DEAD_PANE_LINES))
+    for ((i = start; i < n; i++)); do CAP_LINES+=("${keep[i]}"); done
+  else
+    n=${#out[@]}
+    while ((n > 0)) && [[ -z ${out[n-1]} ]]; do ((n--)); done
+    for ((i = 0; i < n; i++)); do CAP_LINES+=("${out[i]}"); done
+  fi
+  join_lines
+  return 0
+}
+
+classify_pane() {
+  local key=$1
+  if [[ -z $key ]]; then
+    AWAITING="unknown"
+    return 0
+  fi
+  AWAITING=$(printf '%s' "$CAP_TEXT" | "h_${key}_detect_prompt_type")
+  trim4 "$AWAITING"
+  AWAITING=$TRIMMED
+  [[ -n $AWAITING ]] || AWAITING="unknown"
+  return 0
+}
+AWAITING=""
+
+# Direct children of the pane process and their children. comm is cut to
+# fifteen characters by the kernel and does not identify a harness; args
+# is the column to read.
+collect_children() {
+  local root=$1 p line rest cpid comm args depth pid
+  EMIT_CHILDREN=()
+  p=$(type -P ps 2>/dev/null) || p=""
+  if [[ -z $p ]]; then
+    emit warn msg=s:"ps is not available, the process list stays empty" \
+      user_relevant=b:true \
+      hint=s:"install the 'procps' package to see the processes of the launched harness"
+    return 0
+  fi
+  local -a level=("$root") next=()
+  for depth in 1 2; do
+    next=()
+    for pid in ${level[@]+"${level[@]}"}; do
+      run "$TIMEOUT_PS" ps -o pid=,comm=,args= --ppid "$pid"
+      ((RUN_RC == 0)) || continue
+      while IFS= read -r line; do
+        trim4 "$line"
+        line=$TRIMMED
+        [[ -n $line ]] || continue
+        cpid=${line%%[$RWS]*}
+        rest=${line#"$cpid"}
+        trim4 "$rest"
+        rest=$TRIMMED
+        comm=${rest%%[$RWS]*}
+        args=${rest#"$comm"}
+        trim4 "$args"
+        args=$TRIMMED
+        [[ $cpid == +([0-9]) ]] || continue
+        EMIT_CHILDREN+=("$cpid|$comm|$args")
+        next+=("$cpid")
+      done <<<"$RUN_OUT"
+    done
+    level=(${next[@]+"${next[@]}"})
+    ((${#level[@]})) || break
+  done
+  return 0
+}
+
+# The prompt text is always the last argv element. One generic wrapper
+# reads the file and execs the harness, so the prompt passes through no
+# shell level and needs no quoting.
+build_launch_argv() {
+  local key=$1 folder=$2 resume=$3 model=$4 prompt_file=$5
+  local -a launch=() marg=() prefix=()
+  mapfile -d '' -t launch < <("h_${key}_launch_argv" "$folder" "$resume")
+  if [[ -n $model ]]; then
+    mapfile -d '' -t marg < <("h_${key}_model_argv" "$model")
+  fi
+  if [[ $H_PROMPT_DELIVERY == argv && -n $prompt_file ]]; then
+    mapfile -d '' -t prefix < <("h_${key}_prompt_prefix_argv")
+    LAUNCH_ARGV=(bash -c 'pf=$1; shift; exec "$@" "$(cat "$pf")"' _ "$prompt_file"
+      ${launch[@]+"${launch[@]}"} ${marg[@]+"${marg[@]}"} ${prefix[@]+"${prefix[@]}"})
+  else
+    LAUNCH_ARGV=(${launch[@]+"${launch[@]}"} ${marg[@]+"${marg[@]}"})
+  fi
+  return 0
+}
+declare -a LAUNCH_ARGV=()
+
+# Bracketed paste keeps tmux from turning line feeds into carriage
+# returns and sending every line on its own. Trailing line breaks are
+# removed from the copy and Enter is always sent afterwards.
+paste_prompt() {
+  local sess=$1 pf=$2 content copy
+  ensure_tmpd || return 1
+  copy="$TMPD/prompt.txt"
+  content=$(<"$pf")
+  printf '%s' "$content" >"$copy" || return 1
+  PASTE_BUFFER="peeragent-$$"
+  tmux_run load-buffer -b "$PASTE_BUFFER" "$copy"
+  if ((RUN_RC != 0)); then
+    PASTE_ERR=$RUN_ERR
+    tmux_run delete-buffer -b "$PASTE_BUFFER"
+    PASTE_BUFFER=""
+    return 1
+  fi
+  tmux_run paste-buffer -p -t "=$sess:" -b "$PASTE_BUFFER"
+  if ((RUN_RC != 0)); then
+    PASTE_ERR=$RUN_ERR
+    tmux_run delete-buffer -b "$PASTE_BUFFER"
+    PASTE_BUFFER=""
+    return 1
+  fi
+  tmux_run send-keys -t "=$sess:" Enter
+  tmux_run delete-buffer -b "$PASTE_BUFFER"
+  PASTE_BUFFER=""
+  return 0
+}
+PASTE_ERR=""
+
+# ===========================================================================
+# 7. Git setup
+# ===========================================================================
+
+git_init_folder() {
+  local folder=$1 nested=0 top
+  run_git "$TIMEOUT_GIT" git -C "$folder" rev-parse --show-toplevel
+  if ((RUN_RC == 0)); then
+    trim4 "${RUN_OUT%%$'\n'*}"
+    top=$TRIMMED
+    if [[ -n $top && $top != "$folder" ]]; then nested=1; fi
+  fi
+  run_git "$TIMEOUT_GIT_INIT" git -C "$folder" init -b main
+  if ((RUN_RC != 0)); then
+    fatal 1 "git init failed in $folder" \
+      "git reported: ${RUN_ERR:-no error output}; fix the repository state and start again, no harness was started"
+  fi
+  if ((nested)); then
+    emit warn msg=s:"the new repository lies inside another repository" \
+      user_relevant=b:true \
+      hint=s:"the working directory is below an existing repository at $top; commits there may end up in the wrong history"
+  fi
+  return 0
+}
+
+# ===========================================================================
+# 8. Preflight
+# ===========================================================================
+
+pf_tmux() {
+  local p v
+  p=$(type -P tmux 2>/dev/null) || p=""
+  if [[ -z $p ]]; then
+    fatal 3 "tmux is not installed" \
+      "peeragent runs every harness inside a tmux session and needs tmux 3.2 or newer; install the 'tmux' package of your distribution, see docs/harnesses.md"
+  fi
+  run "$TIMEOUT_TMUX" tmux -V
+  v=""
+  if ((RUN_RC == 0)); then
+    trim4 "${RUN_OUT#tmux }"
+    v=$TRIMMED
+  fi
+  [[ -n $v ]] || v="unknown"
+  TMUX_VERSION=$v
+  emit info msg=s:"tmux found: $v"
+  return 0
+}
+
+pf_git() {
+  local p v
+  p=$(type -P git 2>/dev/null) || p=""
+  if [[ -z $p ]]; then
+    fatal 3 "git is not installed" \
+      "--git-repo runs 'git init -b main' in the working directory and needs git; install the 'git' package of your distribution, see docs/harnesses.md"
+  fi
+  run_git "$TIMEOUT_GIT" git --version
+  v=""
+  if ((RUN_RC == 0)); then
+    trim4 "${RUN_OUT#git version }"
+    v=$TRIMMED
+  fi
+  [[ -n $v ]] || v="unknown"
+  GIT_VERSION=$v
+  emit info msg=s:"git found: $v"
+  return 0
+}
+
+pf_harness_known() {
+  if ! handler_known "$1"; then
+    fatal 2 "unknown harness key: $1" \
+      "known keys are claude, codex, agy, opencode and copilot; run 'peeragent list harness' to see which of them are installed"
+  fi
+  load_handler "$1"
+  return 0
+}
+
+detect_current_handler() {
+  local out
+  out=$("h_${H_KEY}_detect")
+  IFS='|' read -r DET_INSTALLED DET_PATH DET_VERSION <<<"$out"
+  return 0
+}
+
+emit_harness_found() {
+  if [[ -n $DET_VERSION ]]; then
+    emit info msg=s:"harness $H_KEY found: $DET_VERSION"
+  else
+    emit info msg=s:"harness $H_KEY found, version unknown"
+    emit_version_warn
+  fi
+  return 0
+}
+
+emit_version_warn() {
+  if ((DET_RC == 124)); then
+    emit warn msg=s:"$H_BINARY --version timed out after ${TIMEOUT_DETECT}s" \
+      user_relevant=b:true \
+      hint=s:"the $H_KEY wrapper may be installing an update; retry or run '$H_BINARY --version' manually"
+  else
+    emit warn msg=s:"$H_BINARY --version did not report a version" \
+      user_relevant=b:true \
+      hint=s:"run '$H_BINARY --version' manually to see why it fails; peeragent does not evaluate the version and continues"
+  fi
+  return 0
+}
+
+pf_harness_installed() {
+  detect_current_handler
+  if ((DET_INSTALLED == 0)); then
+    fatal 3 "harness $H_KEY is not installed" \
+      "the binary '$H_BINARY' was not found in PATH; install the harness or pick another key, see docs/harnesses.md"
+  fi
+  emit_harness_found
+  return 0
+}
+
+pf_prompt_file() {
+  local pf=$1 size content
+  if [[ ! -e $pf ]]; then
+    fatal 2 "prompt file does not exist: $pf" \
+      "pass an existing file with --prompt-file, or start without a prompt and deliver it later with 'peeragent send'"
+  fi
+  if [[ ! -f $pf ]]; then
+    fatal 2 "prompt file is not a regular file: $pf" \
+      "--prompt-file expects a regular file holding the launch prompt"
+  fi
+  if [[ ! -r $pf ]]; then
+    fatal 2 "prompt file is not readable: $pf" \
+      "adjust the permissions of the file so that peeragent can read it"
+  fi
+  size=$(stat -c %s -- "$pf" 2>/dev/null) || size=0
+  if ((size == 0)); then
+    fatal 2 "prompt file is empty: $pf" \
+      "write the prompt into the file, or start without --prompt-file to leave the harness waiting"
+  fi
+  content=$(<"$pf")
+  prompt_effective_length "$content"
+  if ((PEFF_LEN > PROMPT_LIMIT)); then
+    fatal 2 "prompt holds $PEFF_LEN effective characters, the limit is $PROMPT_LIMIT" \
+      "write the assignment into a file in the working directory and pass a short prompt that points at it, with the scope and the stopping condition; paths that start with / and contain no spaces do not count towards the limit"
+  fi
+  PROMPT_BYTES=$size
+  return 0
+}
+
+# ===========================================================================
+# 9. Commands
+# ===========================================================================
+
+cmd_version() {
+  emit version version=s:"$PEERAGENT_VERSION" impl=s:"$PEERAGENT_IMPL"
+  return 0
+}
+
+cmd_list_harness() {
+  local key out
+  for key in $HANDLER_KEYS; do
+    load_handler "$key"
+    detect_current_handler
+    if ((DET_INSTALLED)); then
+      if [[ -n $DET_VERSION ]]; then
+        emit harness.detected key=s:"$key" version=s:"$DET_VERSION" \
+          description=s:"$H_DESCRIPTION" path=s:"$DET_PATH"
+      else
+        emit harness.detected key=s:"$key" version=z: \
+          description=s:"$H_DESCRIPTION" path=s:"$DET_PATH"
+        emit_version_warn
+      fi
+    else
+      emit harness.missing key=s:"$key" description=s:"$H_DESCRIPTION"
+    fi
+  done
+  return 0
+}
+
+emit_models_of() {
+  local key=$1 line k d
+  while IFS= read -r line; do
+    [[ -n $line ]] || continue
+    k=${line%%|*}
+    d=${line#*|}
+    emit model.available harness=s:"$key" key=s:"$k" description=s:"$d" \
+      catalog_updated=s:"$CATALOG_UPDATED"
+  done < <("h_${key}_list_models")
+  return 0
+}
+
+cmd_list_models() {
+  local key
+  if [[ -n $ARG_HARNESS ]]; then
+    pf_harness_known "$ARG_HARNESS"
+    pf_harness_installed
+    emit_models_of "$ARG_HARNESS"
+    return 0
+  fi
+  local -a installed=()
+  for key in $HANDLER_KEYS; do
+    load_handler "$key"
+    detect_current_handler
+    ((DET_INSTALLED)) || continue
+    installed+=("$key")
+    emit_harness_found
+  done
+  for key in ${installed[@]+"${installed[@]}"}; do
+    emit_models_of "$key"
+  done
+  return 0
+}
+
+cmd_list_git_templates() {
+  fatal 2 "the subcommand 'list git-templates' does not exist in this version" \
+    "git templates are planned for a later release; use --git-repo on 'start agent' to run 'git init -b main' in the working directory, see docs/cli.md"
+}
+
+# One place where the deferred prompt hint is built, so that both delivery
+# paths keep the same wording.
+deferred_hint() {
+  local delivery=$1 sess=$2 pf=$3
+  if [[ $delivery == send_keys ]]; then
+    DEFERRED_HINT="deliver with: peeragent send --session $sess --prompt-file $pf"
+  else
+    DEFERRED_HINT="the prompt was passed as a command-line argument; once the pane has reached a state you understand, capture it - if the harness did not pick the prompt up, deliver with: peeragent send --session $sess --prompt-file $pf"
+  fi
+}
+DEFERRED_HINT=""
+
+append_resume_failure_hint() {
+  local base=$1
+  RESUME_HINTED=$base
+  ((ARG_RESUME)) || return 0
+  handler_hint "$H_KEY" resume_failure_hint
+  [[ -n $HINT_TEXT ]] || return 0
+  RESUME_HINTED="$base; $HINT_TEXT"
+  return 0
+}
+RESUME_HINTED=""
+
+cmd_start_agent() {
+  local t_start t_step sess awaiting first_text second_text
+  now_ms
+  t_start=$NOW_MS
+
+  pf_tmux
+  pf_harness_known "$ARG_HARNESS"
+  pf_harness_installed
+  if [[ ! -d $ARG_FOLDER ]]; then
+    fatal 2 "folder does not exist or is not a directory: $ARG_FOLDER" \
+      "pass an existing working directory with --folder"
+  fi
+  if ((ARG_GIT_REPO)) && [[ -e "$ARG_FOLDER/.git" ]]; then
+    fatal 2 "folder is already a git repo" \
+      "drop --git-repo; the working directory already holds a repository, and peeragent never initialises over one"
+  fi
+  if ((ARG_GIT_REPO)); then pf_git; fi
+  if ((ARG_RESUME)) && [[ $H_RESUME_SUPPORT == unsupported ]]; then
+    fatal 2 "harness $H_KEY cannot resume a session" \
+      "start without --resume; this harness has no resume path that peeragent can use"
+  fi
+  if [[ -n $ARG_PROMPT_FILE ]]; then pf_prompt_file "$ARG_PROMPT_FILE"; fi
+  timing preflight "$t_start"
+
+  if ((ARG_GIT_REPO)); then
+    now_ms
+    t_step=$NOW_MS
+    git_init_folder "$ARG_FOLDER"
+    timing git-init "$t_step"
+  fi
+
+  build_launch_argv "$H_KEY" "$ARG_FOLDER" "$ARG_RESUME" "$ARG_MODEL" "$ARG_PROMPT_FILE"
+
+  local -a f=(agent.starting harness=s:"$H_KEY" folder=s:"$ARG_FOLDER")
+  if [[ -n $ARG_MODEL ]]; then f+=(model=s:"$ARG_MODEL"); else f+=(model=z:); fi
+  if ((ARG_RESUME)); then f+=(resume=b:true); else f+=(resume=b:false); fi
+  if [[ -n $ARG_PROMPT_FILE ]]; then
+    f+=(prompt_file=s:"$ARG_PROMPT_FILE")
+  else
+    f+=(prompt_file=z:)
+  fi
+  emit "${f[@]}"
+
+  if ((ARG_RESUME)) && [[ $H_RESUME_SUPPORT == experimental ]]; then
+    handler_hint "$H_KEY" resume_hint
+    if [[ -n $HINT_TEXT ]]; then
+      emit warn msg=s:"resume support of harness $H_KEY is experimental" \
+        user_relevant=b:true hint=s:"$HINT_TEXT"
+    else
+      emit warn msg=s:"resume support of harness $H_KEY is experimental" \
+        user_relevant=b:true
+    fi
+  fi
+
+  if [[ -n ${TMUX-} ]]; then
+    emit debug msg=s:"peeragent itself runs inside a tmux session"
+  fi
+
+  now_ms
+  t_step=$NOW_MS
+  create_session "$ARG_FOLDER" "$H_KEY" "${LAUNCH_ARGV[@]}"
+  sess=$SESSION
+  timing tmux-create "$t_step"
+
+  now_ms
+  t_step=$NOW_MS
+  sleep "$ARG_BOOT_WAIT"
+  timing boot-wait "$t_step"
+
+  now_ms
+  t_step=$NOW_MS
+  if ! pane_state "$sess"; then
+    fatal 1 "could not read the state of the pane in $sess" \
+      "tmux reported: ${RUN_ERR:-no error output}; look at the session yourself: tmux attach -r -t '=$sess'"
+  fi
+  local pane_pid=$PANE_PID dead=$PANE_DEAD status=$PANE_STATUS
+  capture_pane "$sess" "$dead"
+
+  if [[ $dead == 1 ]]; then
+    EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
+    append_resume_failure_hint "the harness exited during startup; the tmux session was kept: tmux attach -r -t '=$sess'"
+    local -a ef=(agent.exited session=s:"$sess")
+    if [[ $status == +([0-9]) ]]; then
+      ef+=(exit_status=n:"$status")
+    else
+      ef+=(exit_status=z:)
+    fi
+    ef+=(lines=a: hint=s:"$RESUME_HINTED" user_relevant=b:true)
+    emit "${ef[@]}"
+    timing diagnose "$t_step"
+    exit 4
+  fi
+
+  classify_pane "$H_KEY"
+  awaiting=$AWAITING
+  first_text=$CAP_TEXT
+  case $awaiting in
+    trust_prompt | auth_prompt | provider_prompt) ;;
+    *)
+      sleep "$SECOND_CAPTURE_WAIT"
+      if capture_pane "$sess" 0; then
+        second_text=$CAP_TEXT
+        if [[ $second_text != "$first_text" ]]; then awaiting="busy"; fi
+      fi
+      ;;
+  esac
+  EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
+  emit agent.pane session=s:"$sess" awaiting=s:"$awaiting" lines=a:
+  timing diagnose "$t_step"
+
+  case $awaiting in
+    trust_prompt)
+      if [[ -n $H_TRUST_ANSWER ]]; then
+        emit warn msg=s:"harness $H_KEY is awaiting trust-prompt confirmation" \
+          user_relevant=b:true \
+          hint=s:"send '$H_TRUST_ANSWER' to trust: tmux send-keys -t '=$sess:' $H_TRUST_ANSWER"
+      else
+        emit warn msg=s:"harness $H_KEY is awaiting trust-prompt confirmation" \
+          user_relevant=b:true \
+          hint=s:"answer the question in the pane yourself: tmux attach -r -t '=$sess'"
+      fi
+      ;;
+    auth_prompt)
+      emit warn msg=s:"harness $H_KEY is not signed in" user_relevant=b:true \
+        hint=s:"the harness needs a login that peeragent cannot perform; sign in outside peeragent and start again, or look at the pane: tmux attach -r -t '=$sess'"
+      ;;
+    provider_prompt)
+      emit warn msg=s:"harness $H_KEY needs a provider configuration" \
+        user_relevant=b:true \
+        hint=s:"configure a model provider in the harness, then start again, or look at the pane: tmux attach -r -t '=$sess'"
+      ;;
+    unknown)
+      append_resume_failure_hint "unrecognised screen; show the captured lines to the user and ask how to proceed"
+      emit warn msg=s:"harness $H_KEY shows a screen peeragent does not recognise" \
+        user_relevant=b:true hint=s:"$RESUME_HINTED"
+      ;;
+  esac
+
+  local delivered=0
+  if [[ -n $ARG_PROMPT_FILE ]]; then
+    if [[ $H_PROMPT_DELIVERY == argv ]]; then
+      case $awaiting in
+        busy | ready) delivered=1 ;;
+      esac
+    elif [[ $awaiting == ready ]]; then
+      now_ms
+      t_step=$NOW_MS
+      if paste_prompt "$sess" "$ARG_PROMPT_FILE"; then
+        timing paste "$t_step"
+        emit agent.prompt_sent session=s:"$sess" bytes=n:"$PROMPT_BYTES"
+        delivered=1
+        now_ms
+        t_step=$NOW_MS
+        sleep "$POST_PASTE_WAIT"
+        if pane_state "$sess" && capture_pane "$sess" "$PANE_DEAD"; then
+          classify_pane "$H_KEY"
+          EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
+          emit agent.pane session=s:"$sess" awaiting=s:"$AWAITING" lines=a:
+        fi
+        timing paste-wait "$t_step"
+      else
+        emit error msg=s:"could not paste the prompt into $sess" \
+          user_relevant=b:true \
+          hint=s:"tmux reported: ${PASTE_ERR:-no error output}; deliver it again with: peeragent send --session $sess --prompt-file $ARG_PROMPT_FILE"
+      fi
+    fi
+    if ((delivered == 0)); then
+      deferred_hint "$H_PROMPT_DELIVERY" "$sess" "$ARG_PROMPT_FILE"
+      emit agent.prompt_deferred session=s:"$sess" \
+        prompt_file=s:"$ARG_PROMPT_FILE" awaiting=s:"$awaiting" \
+        delivery=s:"$H_PROMPT_DELIVERY" hint=s:"$DEFERRED_HINT" \
+        user_relevant=b:true
+    fi
+  fi
+
+  now_ms
+  t_step=$NOW_MS
+  collect_children "$pane_pid"
+  timing process-tree "$t_step"
+  emit agent.started session=s:"$sess" pane_pid=n:"$pane_pid" \
+    child_processes=p: hint=s:"watch with: tmux attach -r -t '=$sess'"
+  return 0
+}
+
+handler_from_session() {
+  SESSION_HANDLER=""
+  if [[ $1 =~ ^peeragent-(.+)-(claude|codex|agy|opencode|copilot)-([0-9a-f]{8})$ ]]; then
+    SESSION_HANDLER=${BASH_REMATCH[2]}
+  fi
+  return 0
+}
+SESSION_HANDLER=""
+
+cmd_send() {
+  local t_start t_step sess=$ARG_SESSION
+  now_ms
+  t_start=$NOW_MS
+
+  pf_tmux
+  tmux_run has-session -t "=$sess"
+  if ((RUN_RC != 0)); then
+    fatal 2 "no tmux session named $sess" \
+      "pass the session name that 'start agent' reported; list the running sessions with 'tmux ls'"
+  fi
+  handler_from_session "$sess"
+  if [[ -n $SESSION_HANDLER ]]; then
+    load_handler "$SESSION_HANDLER"
+    detect_current_handler
+    if ((DET_INSTALLED)); then
+      emit_harness_found
+    else
+      emit warn msg=s:"harness $H_KEY is not installed on this host" \
+        user_relevant=b:true \
+        hint=s:"the prompt is pasted into the running session anyway; peeragent does not need the binary for that"
+    fi
+  else
+    H_KEY=""
+  fi
+  pf_prompt_file "$ARG_PROMPT_FILE"
+  if ! pane_state "$sess"; then
+    fatal 1 "could not read the state of the pane in $sess" \
+      "tmux reported: ${RUN_ERR:-no error output}; look at the session yourself: tmux attach -r -t '=$sess'"
+  fi
+  if [[ $PANE_DEAD == 1 ]]; then
+    fatal 2 "the harness in $sess is no longer running" \
+      "the pane is dead, a paste would go nowhere; look at it with 'tmux attach -r -t \"=$sess\"' and start a new session"
+  fi
+  timing preflight "$t_start"
+
+  capture_pane "$sess" 0
+  classify_pane "$H_KEY"
+  EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
+  emit agent.pane session=s:"$sess" awaiting=s:"$AWAITING" lines=a:
+
+  now_ms
+  t_step=$NOW_MS
+  if ! paste_prompt "$sess" "$ARG_PROMPT_FILE"; then
+    fatal 1 "could not paste the prompt into $sess" \
+      "tmux reported: ${PASTE_ERR:-no error output}; check that the session still holds a live pane and try again"
+  fi
+  timing paste "$t_step"
+  emit agent.prompt_sent session=s:"$sess" bytes=n:"$PROMPT_BYTES"
+
+  now_ms
+  t_step=$NOW_MS
+  sleep "$ARG_WAIT"
+  if pane_state "$sess" && capture_pane "$sess" "$PANE_DEAD"; then
+    classify_pane "$H_KEY"
+    EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
+    emit agent.pane session=s:"$sess" awaiting=s:"$AWAITING" lines=a:
+  fi
+  timing paste-wait "$t_step"
+  return 0
+}
+
+cmd_duplicate() {
+  local t_start t_step src=$ARG_FROM dst=$ARG_TO parent meas files bytes
+  now_ms
+  t_start=$NOW_MS
+
+  pf_harness_known "$ARG_HARNESS"
+  if [[ $H_DUPLICATE_SUPPORT == unsupported ]]; then
+    handler_hint "$H_KEY" duplicate_refusal_hint
+    fatal 2 "duplicate for $H_KEY is not supported in v1" "$HINT_TEXT"
+  fi
+  if [[ ! -d $src ]]; then
+    fatal 2 "source does not exist or is not a directory: $src" \
+      "pass an existing working directory with --from"
+  fi
+  parent=${dst%/*}
+  [[ -n $parent ]] || parent="/"
+  if [[ ! -d $parent ]]; then
+    fatal 2 "parent directory of the destination does not exist: $parent" \
+      "create the parent directory first, or pass a destination inside an existing one"
+  fi
+  if [[ $dst == "$src"/* || $src == "$dst"/* || $dst == "$src" ]]; then
+    fatal 2 "source and destination overlap" \
+      "pick a destination outside the source directory; copying a tree into itself would never end"
+  fi
+  pf_harness_installed
+  if "h_${H_KEY}_session_store_exists" "$dst"; then
+    fatal 1 "session store for destination already exists" \
+      "the harness already has a session store for $dst; remove it or pick another destination, otherwise the copy would compete with it"
+  fi
+  if [[ -e $dst ]]; then
+    if [[ ! -d $dst ]]; then
+      fatal 1 "destination exists and differs from source" \
+        "$dst exists and is not a directory; remove it or pick another destination"
+    fi
+    if [[ $(list_top "$src") != $(list_top "$dst") ]]; then
+      fatal 1 "destination exists and differs from source" \
+        "$dst already exists with other top level entries than $src; remove it or pick another destination"
+    fi
+  fi
+  timing preflight "$t_start"
+
+  if [[ $H_DUPLICATE_SUPPORT == experimental ]]; then
+    emit warn msg=s:"duplicate support of harness $H_KEY is experimental" \
+      user_relevant=b:true \
+      hint=s:"check in the copy whether the harness finds the session before you rely on the history"
+  fi
+
+  now_ms
+  t_step=$NOW_MS
+  if [[ -e $dst ]]; then
+    emit info msg=s:"workspace already present, skipped copy"
+  else
+    if ! mkdir -p -- "$dst" 2>/dev/null; then
+      fatal 1 "could not create the destination directory: $dst" \
+        "check the permissions of the parent directory"
+    fi
+    if ! cp -a -- "$src/." "$dst/" 2>/dev/null; then
+      fatal 1 "could not copy the workspace to $dst" \
+        "check the permissions and the free space of the destination; the copy is incomplete"
+    fi
+    meas=$(tree_measure "$dst")
+    files=${meas%%|*}
+    bytes=${meas#*|}
+    emit info msg=s:"copied workspace" files=n:"$files" bytes=n:"$bytes"
+  fi
+  timing workspace-copy "$t_step"
+
+  now_ms
+  t_step=$NOW_MS
+  if ! "h_${H_KEY}_session_store_exists" "$src"; then
+    emit warn msg=s:"no session store found for source" user_relevant=b:true \
+      hint=s:"the copy holds the working tree only; the harness will start a fresh session in it"
+  fi
+  local out status sfiles sbytes sdir
+  out=$("h_${H_KEY}_duplicate_session" "$src" "$dst") || {
+    fatal 1 "could not copy the session store of harness $H_KEY" \
+      "check the permissions of the harness configuration directory; the working tree was copied, the session history was not"
+  }
+  IFS='|' read -r status sfiles sbytes sdir <<<"${out%%$'\n'*}"
+  local -a df=(harness.duplicated key=s:"$H_KEY" status=s:"$status"
+    files=n:"$sfiles" bytes=n:"$sbytes")
+  if [[ -n $sdir ]]; then df+=(session_dir=s:"$sdir"); else df+=(session_dir=z:); fi
+  emit "${df[@]}"
+  timing session-copy "$t_step"
+
+  emit info msg=s:"duplicate complete" \
+    hint=s:"working tree shares origin and branch with source; the first start in the copy may show a trust prompt"
+  return 0
+}
+
+# ===========================================================================
+# 10. CLI
+# ===========================================================================
+
+usage() {
+  cat <<EOF
+peeragent $PEERAGENT_VERSION - start a coding agent harness in a tmux session
+
+Usage:
+  peeragent version
+  peeragent list harness
+  peeragent list models [--harness <key>]
+  peeragent start agent --folder <path> --harness <key>
+                        [--prompt-file <path>] [--model <string>]
+                        [--resume] [--git-repo] [--boot-wait <seconds>]
+  peeragent send --session <name> --prompt-file <path> [--wait <seconds>]
+  peeragent duplicate --from <src> --to <dst> --harness <key>
+
+Global flags:
+  --json                one JSON object per message inside a JSON array
+  --no-log              do not write a log file
+  --log-file <path>     write the log to this path instead of the default
+  --verbose             also print debug and timing messages
+  --no-color            never use ANSI colors
+  --help, -h            show this text and exit
+
+Harness keys: claude, codex, agy, opencode, copilot
+
+The launch prompt is limited to $PROMPT_LIMIT effective characters: write the
+assignment into a file in the working directory and point the prompt at it.
+
+Full reference: docs/cli.md
+EOF
+}
+
+declare -a INVOCATION_ARGS=()
+
+need_value() {
+  if [[ -z ${2+x} ]]; then
+    fatal 2 "flag $1 needs a value" \
+      "pass a value after $1, for example '$1 <value>'; run peeragent --help for the syntax"
+  fi
+  return 0
+}
+
+check_int_range() {
+  local flag=$1 v=$2 lo=$3 hi=$4
+  if [[ ! $v =~ ^[0-9]+$ ]] || ((10#$v < lo || 10#$v > hi)); then
+    fatal 2 "flag $flag expects a whole number between $lo and $hi, got: $v" \
+      "pass a value in that range, for example '$flag $lo'"
+  fi
+  return 0
+}
+
+declare -A SEEN_FLAG=()
+
+parse_args() {
+  local -a positional=()
+  local a
+  while (($#)); do
+    a=$1
+    case $a in
+      --json) ;;
+      --no-log) NO_LOG=1 ;;
+      --verbose) VERBOSE=1 ;;
+      --no-color) NO_COLOR_FLAG=1 ;;
+      --log-file)
+        need_value "$a" ${2+"$2"}
+        LOG_PATH_RAW=$2
+        SEEN_FLAG[log-file]=1
+        shift
+        ;;
+      --folder)
+        need_value "$a" ${2+"$2"}
+        ARG_FOLDER=$2
+        SEEN_FLAG[folder]=1
+        shift
+        ;;
+      --harness)
+        need_value "$a" ${2+"$2"}
+        ARG_HARNESS=$2
+        SEEN_FLAG[harness]=1
+        shift
+        ;;
+      --prompt-file)
+        need_value "$a" ${2+"$2"}
+        ARG_PROMPT_FILE=$2
+        SEEN_FLAG[prompt-file]=1
+        shift
+        ;;
+      --model)
+        need_value "$a" ${2+"$2"}
+        ARG_MODEL=$2
+        SEEN_FLAG[model]=1
+        shift
+        ;;
+      --session)
+        need_value "$a" ${2+"$2"}
+        ARG_SESSION=$2
+        SEEN_FLAG[session]=1
+        shift
+        ;;
+      --from)
+        need_value "$a" ${2+"$2"}
+        ARG_FROM=$2
+        SEEN_FLAG[from]=1
+        shift
+        ;;
+      --to)
+        need_value "$a" ${2+"$2"}
+        ARG_TO=$2
+        SEEN_FLAG[to]=1
+        shift
+        ;;
+      --resume)
+        ARG_RESUME=1
+        SEEN_FLAG[resume]=1
+        ;;
+      --git-repo)
+        ARG_GIT_REPO=1
+        SEEN_FLAG[git-repo]=1
+        ;;
+      --boot-wait)
+        need_value "$a" ${2+"$2"}
+        check_int_range "$a" "$2" 1 120
+        ARG_BOOT_WAIT=$((10#$2))
+        SEEN_FLAG[boot-wait]=1
+        shift
+        ;;
+      --wait)
+        need_value "$a" ${2+"$2"}
+        check_int_range "$a" "$2" 0 120
+        ARG_WAIT=$((10#$2))
+        SEEN_FLAG[wait]=1
+        shift
+        ;;
+      -*)
+        fatal 2 "unknown flag: $a" \
+          "run 'peeragent --help' to see the flags of each subcommand, or see docs/cli.md"
+        ;;
+      *) positional+=("$a") ;;
+    esac
+    shift
+  done
+
+  if ((NO_LOG)) && [[ -n ${SEEN_FLAG[log-file]+x} ]]; then
+    fatal 2 "--no-log and --log-file contradict each other" \
+      "pass either --no-log to write no log at all, or --log-file <path> to choose where the log goes"
+  fi
+
+  local n=${#positional[@]} sub="" second="" expected=1
+  ((n > 0)) && sub=${positional[0]}
+  ((n > 1)) && second=${positional[1]}
+  case $sub in
+    "")
+      fatal 2 "no subcommand given" \
+        "run 'peeragent --help' to see the available subcommands"
+      ;;
+    list)
+      expected=2
+      case $second in
+        harness) CMD="list-harness" ;;
+        models) CMD="list-models" ;;
+        git-templates) CMD="list-git-templates" ;;
+        "")
+          fatal 2 "'list' needs a target" \
+            "use 'peeragent list harness' or 'peeragent list models'"
+          ;;
+        *)
+          fatal 2 "unknown list target: $second" \
+            "use 'peeragent list harness' or 'peeragent list models'"
+          ;;
+      esac
+      ;;
+    start)
+      expected=2
+      case $second in
+        agent) CMD="start-agent" ;;
+        "")
+          fatal 2 "'start' needs a target" \
+            "use 'peeragent start agent --folder <path> --harness <key>'"
+          ;;
+        *)
+          fatal 2 "unknown start target: $second" \
+            "use 'peeragent start agent --folder <path> --harness <key>'"
+          ;;
+      esac
+      ;;
+    send) CMD="send" ;;
+    duplicate) CMD="duplicate" ;;
+    version) CMD="version" ;;
+    *)
+      fatal 2 "unknown subcommand: $sub" \
+        "run 'peeragent --help' to see the available subcommands"
+      ;;
+  esac
+  if ((n > expected)); then
+    fatal 2 "unexpected argument: ${positional[expected]}" \
+      "run 'peeragent --help' to see the syntax of each subcommand"
+  fi
+
+  check_flag_scope
+  fill_defaults
+  return 0
+}
+LOG_PATH_RAW=""
+
+# Every subcommand accepts the global flags and only its own; a flag from
+# another subcommand is an argument error, not a silently ignored value.
+check_flag_scope() {
+  local allowed flag
+  case $CMD in
+    version | list-harness | list-git-templates) allowed="" ;;
+    list-models) allowed="harness" ;;
+    start-agent) allowed="folder harness prompt-file model resume git-repo boot-wait" ;;
+    send) allowed="session prompt-file wait" ;;
+    duplicate) allowed="from to harness" ;;
+    *) allowed="" ;;
+  esac
+  for flag in "${!SEEN_FLAG[@]}"; do
+    [[ $flag == "log-file" ]] && continue
+    if [[ " $allowed " != *" $flag "* ]]; then
+      fatal 2 "flag --$flag does not belong to this subcommand" \
+        "drop --$flag here; run 'peeragent --help' to see which flags each subcommand takes"
+    fi
+  done
+
+  local -a required=()
+  case $CMD in
+    start-agent) required=(folder harness) ;;
+    send) required=(session prompt-file) ;;
+    duplicate) required=(from to harness) ;;
+  esac
+  for flag in ${required[@]+"${required[@]}"}; do
+    if [[ -z ${SEEN_FLAG[$flag]+x} ]]; then
+      fatal 2 "flag --$flag is required for this subcommand" \
+        "pass --$flag; run 'peeragent --help' to see the syntax of each subcommand"
+    fi
+  done
+  return 0
+}
+
+# Every path argument is made absolute before its first use; a path that
+# does not exist yet is allowed, the preflight decides about existence.
+fill_defaults() {
+  if [[ -n $ARG_FOLDER ]]; then
+    abs_path "$ARG_FOLDER"
+    ARG_FOLDER=$ABS
+  fi
+  if [[ -n $ARG_PROMPT_FILE ]]; then
+    abs_path "$ARG_PROMPT_FILE"
+    ARG_PROMPT_FILE=$ABS
+  fi
+  if [[ -n $ARG_FROM ]]; then
+    abs_path "$ARG_FROM"
+    ARG_FROM=$ABS
+  fi
+  if [[ -n $ARG_TO ]]; then
+    abs_path "$ARG_TO"
+    ARG_TO=$ABS
+  fi
+  if [[ -n $LOG_PATH_RAW ]]; then
+    abs_path "$LOG_PATH_RAW"
+    LOG_PATH=$ABS
+  fi
+  case $CMD in
+    list-harness) LOG_ACTION="list-harness" ;;
+    list-models) LOG_ACTION="list-models" ;;
+    start-agent) LOG_ACTION="start-agent" ;;
+    send) LOG_ACTION="send" ;;
+    duplicate) LOG_ACTION="duplicate" ;;
+    version) LOG_ACTION="version" ;;
+    *) LOG_ACTION="invalid" ;;
+  esac
+  return 0
+}
+
+setup_color() {
+  COLOR=0
+  [[ $OUT_MODE == plain ]] || return 0
+  ((NO_COLOR_FLAG)) && return 0
+  [[ -n ${NO_COLOR-} ]] && return 0
+  [[ -t 1 ]] || return 0
+  COLOR=1
+  return 0
+}
+
+main() {
+  local a
+  init_json_ctl
+  INVOCATION_ARGS=("$@")
+
+  # --help wins over everything and prints no array, so that a caller who
+  # asks for the syntax never has to parse a message stream.
+  for a in "$@"; do
+    if [[ $a == "--help" || $a == "-h" ]]; then
+      LOG_ENABLED=0
+      usage
+      exit 0
+    fi
+  done
+
+  for a in "$@"; do
+    if [[ $a == "--json" ]]; then
+      OUT_MODE="json"
+      break
+    fi
+  done
+
+  trap 'on_exit' EXIT
+  trap 'on_signal 2' INT
+  trap 'on_signal 15' TERM
+  trap 'on_signal 1' HUP
+
+  if [[ $OUT_MODE == json ]]; then
+    printf '[\n'
+    ARRAY_OPEN=1
+  fi
+
+  parse_args "$@"
+  setup_color
+  log_setup
+  log_open
+
+  case $CMD in
+    version) cmd_version ;;
+    list-harness) cmd_list_harness ;;
+    list-models) cmd_list_models ;;
+    list-git-templates) cmd_list_git_templates ;;
+    start-agent) cmd_start_agent ;;
+    send) cmd_send ;;
+    duplicate) cmd_duplicate ;;
+  esac
+  exit 0
+}
+
+main "$@"
