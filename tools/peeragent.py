@@ -191,6 +191,8 @@ class Emitter:
     # -- public interface -------------------------------------------------
 
     def emit(self, obj: dict) -> None:
+        if self._closed:
+            return
         obj.setdefault("user_relevant", False)
         t = obj["type"]
         # stdout side
@@ -1190,6 +1192,9 @@ def cmd_list_models(emitter: Emitter, harness_key: Optional[str]) -> int:
             })
         return 0
 
+    # The preflight checks for all harnesses come first; only then are the
+    # catalogs listed, so the info messages form one block.
+    installed = []
     for key in HARNESS_ORDER:
         handler = HANDLERS[key]
         info = handler.detect()
@@ -1199,6 +1204,9 @@ def cmd_list_models(emitter: Emitter, harness_key: Optional[str]) -> int:
             emitter.info(f"harness {key} found, version unknown")
         else:
             emitter.info(f"harness {key} found: {info.version}")
+        installed.append(key)
+    for key in installed:
+        handler = HANDLERS[key]
         for model in handler.list_models():
             emitter.emit({
                 "type": "model.available", "harness": key, **model,
@@ -1247,6 +1255,7 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
                 emitter.warn(
                     "nested repository: folder is inside an existing git "
                     "repository at " + error[len("__nested__:"):] + "; initializing anyway",
+                    "the new repository is independent of the enclosing one; remove the new .git directory if that was not intended",
                 )
                 error = None
             if error is not None:
@@ -1380,7 +1389,8 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
     with Stopwatch(emitter, "process-tree"):
         children = process_tree(pane_pid)
         if children is None:
-            emitter.warn("ps is not available; the child process list will stay empty")
+            emitter.warn("ps is not available; the child process list will stay empty",
+                         "install procps to get the process image of the launched harness")
             children = []
 
     emitter.emit({
@@ -1416,7 +1426,8 @@ def cmd_send(emitter: Emitter, ns) -> int:
                 else:
                     emitter.info(f"harness {handler.key} found: {info.version}")
             else:
-                emitter.warn(f"harness {handler.key} is not installed on this host")
+                emitter.warn(f"harness {handler.key} is not installed on this host",
+                             "the prompt is delivered anyway; the harness binary is not needed for send")
 
     prompt_content, prompt_bytes = check_prompt_file(emitter, abs_path(ns.prompt_file))
 
@@ -1527,6 +1538,7 @@ def cmd_duplicate(emitter: Emitter, ns) -> int:
     if handler.duplicate_support == "experimental":
         emitter.warn(
             f"duplicate for {handler.key} is experimental and not yet verified end to end",
+            "check the copied session in the destination before relying on it",
         )
 
     if not os.path.exists(dst):
@@ -1540,7 +1552,8 @@ def cmd_duplicate(emitter: Emitter, ns) -> int:
     with Stopwatch(emitter, "session-copy"):
         dup = handler.duplicate_session(src, dst)
     if dup.session_dir is None and dup.files == 0 and dup.bytes == 0:
-        emitter.warn("no session store found for source")
+        emitter.warn("no session store found for source",
+                     "the copy has no session history; a resume in the destination will find nothing")
     emitter.emit({
         "type": "harness.duplicated", "key": handler.key, "status": dup.status,
         "files": dup.files, "bytes": dup.bytes, "session_dir": dup.session_dir,

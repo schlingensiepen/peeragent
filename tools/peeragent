@@ -633,8 +633,13 @@ run() {
   local ef="$TMPD/run.err"
   timeout "$to" "$@" >"$RUN_OUT_FILE" 2>"$ef" </dev/null
   RUN_RC=$?
-  RUN_OUT=$(<"$RUN_OUT_FILE")
-  RUN_ERR=$(<"$ef")
+  # Broken byte sequences are repaired here and not only at output time:
+  # pattern matching and trimming silently do nothing on a string the
+  # locale cannot decode, so a trailing newline would survive a trim.
+  utf8_clean "$(<"$RUN_OUT_FILE")"
+  RUN_OUT=$UC
+  utf8_clean "$(<"$ef")"
+  RUN_ERR=$UC
   return 0
 }
 
@@ -655,8 +660,10 @@ run_git() {
   GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/true \
     timeout "$to" "$@" >"$RUN_OUT_FILE" 2>"$ef" </dev/null
   RUN_RC=$?
-  RUN_OUT=$(<"$RUN_OUT_FILE")
-  RUN_ERR=$(<"$ef")
+  utf8_clean "$(<"$RUN_OUT_FILE")"
+  RUN_OUT=$UC
+  utf8_clean "$(<"$ef")"
+  RUN_ERR=$UC
   return 0
 }
 
@@ -811,6 +818,10 @@ detect_binary() {
   DET_PATH=$p
   run "$TIMEOUT_DETECT" "$p" --version
   DET_RC=$RUN_RC
+  # The handler returns its record on stdout and therefore runs in a
+  # subshell; the exit status of the version call has to travel beside it
+  # so that the caller can tell a timeout from a failing call.
+  if [[ -n $TMPD ]]; then printf '%s' "$DET_RC" >"$TMPD/detect.rc" 2>/dev/null; fi
   if ((RUN_RC == 0)); then
     trim4 "${RUN_OUT%%$'\n'*}"
     DET_VERSION=$TRIMMED
@@ -1374,7 +1385,10 @@ create_session() {
   fi
   SESSION=$sess
 
-  tmux_run set-option -t "=$sess" mouse on
+  # set-option resolves its target as a pane, so the window part has to be
+  # present even for a session option; an exact session name on its own is
+  # rejected by tmux.
+  tmux_run set-option -t "=$sess:" mouse on
   if ((RUN_RC != 0)); then session_setup_failed "set-option mouse"; fi
   tmux_run set-option -t "=$sess:" -w remain-on-exit on
   if ((RUN_RC != 0)); then session_setup_failed "set-option remain-on-exit"; fi
@@ -1425,7 +1439,8 @@ capture_pane() {
   mapfile -t raw <"$RUN_OUT_FILE"
   local -a out=()
   for l in ${raw[@]+"${raw[@]}"}; do
-    trim_right "$l"
+    utf8_clean "$l"
+    trim_right "$UC"
     out+=("$TRIMMED")
   done
   local i n
@@ -1633,8 +1648,15 @@ pf_harness_known() {
 
 detect_current_handler() {
   local out
+  DET_RC=0
+  if [[ -n $TMPD ]]; then rm -f -- "$TMPD/detect.rc"; fi
   out=$("h_${H_KEY}_detect")
-  IFS='|' read -r DET_INSTALLED DET_PATH DET_VERSION <<<"$out"
+  IFS='|' read -r DET_INSTALLED DET_PATH DET_VERSION <<<"${out%%$'\n'*}"
+  DET_INSTALLED=${DET_INSTALLED:-0}
+  if [[ -n $TMPD && -r "$TMPD/detect.rc" ]]; then
+    DET_RC=$(<"$TMPD/detect.rc")
+    DET_RC=${DET_RC:-0}
+  fi
   return 0
 }
 
@@ -2081,7 +2103,7 @@ cmd_duplicate() {
       fatal 1 "destination exists and differs from source" \
         "$dst exists and is not a directory; remove it or pick another destination"
     fi
-    if [[ $(list_top "$src") != $(list_top "$dst") ]]; then
+    if [[ "$(list_top "$src")" != "$(list_top "$dst")" ]]; then
       fatal 1 "destination exists and differs from source" \
         "$dst already exists with other top level entries than $src; remove it or pick another destination"
     fi
@@ -2459,6 +2481,7 @@ main() {
   parse_args "$@"
   setup_color
   log_setup
+  ensure_tmpd || true
   log_open
 
   case $CMD in
