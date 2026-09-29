@@ -433,8 +433,9 @@ def redact_env() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Model catalogs (§17.8 of the specification this build is derived from;
-# static, English descriptions, one fixed update date for all five)
+# Model catalogs. Static lists with English descriptions and one shared
+# date saying when they were last checked - there is no live query
+# against a harness, so a model added yesterday is not in here.
 # ---------------------------------------------------------------------------
 
 CATALOG_UPDATED = "2026-08-16"
@@ -906,7 +907,7 @@ def has_session(name: str) -> bool:
 
 def create_session(name: str, folder: str, argv: list[str]) -> tuple[bool, str]:
     """The session is built empty first and only then respawned into the
-    harness (race-free start, §10.4a of the design): that way a harness
+    harness (the race-free start): that way a harness
     that dies immediately still leaves a pane the diagnosis step can read,
     instead of a session that vanished before anyone looked at it."""
     cp = run_tmux(["new-session", "-d", "-s", name, "-c", folder, "-x", "200", "-y", "50"])

@@ -13,7 +13,8 @@ and what is not is recorded in [MATURITY.md](MATURITY.md).
 
 - Two call-compatible programs, one in Python using the standard
   library only and one in Bash, producing the same messages in the
-  same order.
+  same order, with the exceptions named in
+  [MATURITY.md](MATURITY.md).
 - `peeragent start agent` launches one of the supported harnesses in
   its own tmux session, waits for it to come up, reports the visible
   screen and classifies it as ready, busy, or waiting for a trust,

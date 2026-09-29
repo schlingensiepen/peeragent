@@ -28,6 +28,49 @@ sandbox=$(mktemp -d "${TMPDIR:-/tmp}/peeragent-conformance-XXXXXX")
 cleanup() { [ -n "${KEEP:-}" ] || rm -rf "$sandbox"; }
 trap cleanup EXIT
 
+# --- Preflight -------------------------------------------------------
+#
+# Every case compares the two programs with each other, so an
+# environment that breaks both of them the same way reads as agreement.
+# That is the one way this suite can lie, and these checks are what
+# stops it: they fail loudly instead of passing quietly.
+
+case "$sandbox" in
+  *[[:space:]]*)
+    printf 'the sandbox path contains a space: %s\n' "$sandbox" >&2
+    printf 'set TMPDIR to a path without spaces and run again\n' >&2
+    exit 3 ;;
+esac
+
+# A tmux socket path is limited by the length of a unix domain socket
+# address, about 100 characters. Past that, every case that starts a
+# harness fails in both programs alike.
+if [ ${#sandbox} -gt 80 ]; then
+  printf 'the sandbox path is %s characters, which leaves no room for a\n' \
+    "${#sandbox}" >&2
+  printf 'tmux socket beneath it: set TMPDIR to something shorter\n' >&2
+  exit 3
+fi
+
+if ! command -v tmux >/dev/null 2>&1; then
+  printf 'tmux is not on PATH; the cases that start a harness need it\n' >&2
+  exit 3
+fi
+
+# The canary: if this does not work, nothing below means anything.
+for impl in "$py" "$sh"; do
+  case "$impl" in
+    *.py) out=$(python3 "$impl" version --json 2>/dev/null) ;;
+    *)    out=$(bash "$impl" version --json 2>/dev/null) ;;
+  esac
+  case "$out" in
+    \[*'"type":"version"'*\]*) : ;;
+    *) printf 'canary failed: %s did not answer "version --json"\n' "$impl" >&2
+       printf 'got: %s\n' "${out:-<nothing>}" >&2
+       exit 3 ;;
+  esac
+done
+
 pass=0; fail=0; failed=()
 
 cases=("$@")
@@ -60,9 +103,14 @@ for name in "${cases[@]}"; do
   profile=fakes
   [ -f "$dir/path" ] && profile=$(tr -d '[:space:]' < "$dir/path")
 
+  # The host's own PATH is the base, so tmux and the standard tools are
+  # found wherever this machine keeps them. Hard-coding /usr/bin:/bin
+  # made the suite pass on a machine where tmux lives elsewhere, because
+  # both programs then failed the same way.
+  base_path="${PATH:-/usr/bin:/bin}"
   case "$profile" in
-    fakes)  path="$fixtures/bin:/usr/bin:/bin" ;;
-    bare)   path="/usr/bin:/bin" ;;
+    fakes)  path="$fixtures/bin:$base_path" ;;
+    bare)   path="$base_path" ;;
     notmux) path="$fixtures/bin:$work/nothing" ;;
     *)      printf 'FAIL %s\n  unknown path profile: %s\n' "$name" "$profile"
             fail=$((fail + 1)); failed+=("$name"); continue ;;
@@ -86,8 +134,10 @@ for name in "${cases[@]}"; do
       bash "$dir/setup.sh" >"$box/setup.log" 2>&1
 
     args=$(sed -e "s|@SANDBOX@|$box|g" -e "s|@HOME@|$home|g" "$dir/args")
+    set -f  # no globbing while the case arguments are split
     # shellcheck disable=SC2206  # deliberate word splitting of the case args
     argv=($args)
+    set +f
 
     case "$impl" in
       py) cmd=("python3" "$py") ;;
@@ -106,14 +156,19 @@ for name in "${cases[@]}"; do
     printf '%s' "$?" > "$work/$impl.code"
   done
 
-  # Whatever a case started goes down with its own server. Only this
-  # one is ever touched: the suite never calls kill-server on a socket
-  # it did not create, and never kills a session by pattern.
+  # Whatever a case started is taken down by name, one session at a
+  # time. Killing a whole server is never done here, not even on a
+  # socket this script created: the habit is what causes the damage,
+  # and a socket directory under the sandbox is removed with it anyway.
   for impl in py sh; do
     sock="$work/$impl/tmux"
-    if [ -d "$sock" ]; then
-      TMUX= TMUX_TMPDIR="$sock" tmux kill-server >/dev/null 2>&1 || true
-    fi
+    [ -d "$sock" ] || continue
+    while IFS= read -r sess; do
+      [ -n "$sess" ] || continue
+      TMUX= TMUX_TMPDIR="$sock" tmux kill-session -t "=$sess" \
+        >/dev/null 2>&1 || true
+    done < <(TMUX= TMUX_TMPDIR="$sock" tmux list-sessions \
+             -F '#{session_name}' 2>/dev/null)
   done
 
   # Both streams, and the exit status: a comparison that dies with a
@@ -131,6 +186,11 @@ for name in "${cases[@]}"; do
     fail=$((fail + 1)); failed+=("$name")
   fi
 done
+
+if [ "$pass" -eq 0 ] && [ "$fail" -eq 0 ]; then
+  printf 'no cases ran; fixtures/ is empty or the names given do not exist\n' >&2
+  exit 3
+fi
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 if [ "$fail" -gt 0 ]; then

@@ -67,6 +67,16 @@ Both programs accept the same arguments and produce the same
 messages in the same order, so the choice is free and may differ
 between projects.
 
+That equivalence is checked, and it has two named exceptions. The
+message describing the environment reports the interpreter, so it
+differs by construction. And on a screen that matches no marker and
+carries something moving, such as a spinner, one program may call it
+busy and the other unrecognised, because the rule compares two
+captures two seconds apart and the outcome depends on which two
+seconds. Both values tell a caller the same thing - look for
+yourself - and neither permits a key sequence.
+[MATURITY.md](MATURITY.md) keeps the current list.
+
 - Python 3.11 or newer available: use `tools/peeragent.py`.
 - Otherwise: use `tools/peeragent` (Bash).
 

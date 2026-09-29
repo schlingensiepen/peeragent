@@ -76,6 +76,12 @@ call-compatible. Use `peeragent.py` where Python 3.11 or newer is
 available, otherwise the bash version. Output and log are
 structurally the same, so you may mix them within one project.
 
+Two differences are known and neither changes what you do. The
+environment message reports the interpreter. And a screen with
+something moving on it and no marker may come back as `busy` from
+one program and `unknown` from the other; both mean the same for
+you, which is that you look at the pane rather than send anything.
+
 Call the installed program. This skill bundles no copy of it. If
 `peeragent` is not on the `PATH`, use the path recorded when it
 was installed;
@@ -203,12 +209,13 @@ itself.
 Expect the first start in a directory to stop short of doing work,
 and keep two causes apart. `claude`, `codex` and `copilot` ask
 whether they may trust the directory; that happens because the
-directory is new to them. `agy` asks for a login method and
-`opencode` for a provider whenever none is configured on the
-machine; that has nothing to do with the directory, and on a
-machine where both are set up their first screen is not known. Do
-not promise the user that a configured `agy` will come up ready.
-Either way, a first screen that is not ready is the normal case.
+directory is new to them. `agy` also asks about the directory
+once an account is configured, and otherwise stops at a login
+selection; `opencode` asks for a provider whenever none is set up,
+which has nothing to do with the directory. What a configured
+`opencode` shows first is still unknown here, so do not promise a
+user that it will come up ready. Either way, a first screen that is
+not ready is the normal case.
 
 After the boot wait, peeragent captures the visible pane and
 classifies it in the `awaiting` field of the `agent.pane`
@@ -378,6 +385,29 @@ other rule here — and it only works if the user was given the name
 beforehand, not after something went wrong. An agent that keeps
 the session name to itself takes away the one path that does not
 depend on any of our assumptions.
+
+## If you ever clean up a session
+
+peeragent never ends a session that has a harness in it. The one
+exception is its own: if preparing a session fails before the harness
+is launched, it removes that one session again, by its full name.
+
+Hold yourself to the same rule. Kill a session with its full name and
+the exact-match form:
+
+```bash
+tmux kill-session -t "=<full session name>"
+```
+
+Never `tmux kill-server`, and never a loop over a pattern or a prefix.
+peeragent uses the standard tmux server, which it shares with
+everything else on the machine: the person's own sessions, other
+agents, and earlier runs of your own. A server taken down takes all of
+them with it, and on a machine where the account has no lingering the
+clients dying can end the login session and everything under it.
+
+A session left behind costs a few megabytes and one command. That is
+the cheaper mistake, by a wide margin, and it is the one to prefer.
 
 ## The harness can also be started directly
 

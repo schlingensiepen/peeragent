@@ -146,10 +146,20 @@ End each session you created by its exact name:
 tmux -S /tmp/tmux-$(id -u)/pa-try kill-session -t "=<session>"
 ```
 
-Never `kill-server` on your default socket. Harnesses keep trust
-decisions and session histories for the directories you start them
-in, so a real run leaves entries behind in the harness's own
-configuration.
+Never `kill-server`. Not on your default socket, and not on one you
+created either - the habit is what causes the damage, and a socket
+directory under a scratch path disappears with the path anyway. Never
+a loop over a pattern or a prefix, which is one typo away from a
+session that was not yours.
+
+The reason is not hypothetical. Taking down a shared tmux server ends
+every client attached to it, which can end the login session those
+clients belong to, and on an account without lingering systemd then
+removes everything else that account was running.
+
+Harnesses also keep trust decisions and session histories for the
+directories you start them in, so a real run leaves entries behind in
+the harness's own configuration.
 
 ## Evidence
 

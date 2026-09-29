@@ -73,4 +73,4 @@ Bash version lacks.
 Shipping only the Python implementation and depending on a few
 small packages. Rejected: it removes the reason for the second
 implementation, which is the pressure it puts on the precision of
-the specification.
+this document set.

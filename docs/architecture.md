@@ -339,9 +339,9 @@ vector are replaced as well. The peeragent version in the version
 message is not normalized. Normalizing means replacing a value
 with a fixed placeholder: whether the key is present at all
 remains part of the comparison. Messages and hints are normalized
-because they are prose; both implementations keep those texts in a
-shared list so they stay identical in practice without being
-frozen by a specification.
+because they are prose: the two programs word them independently,
+and nothing requires them to agree. A document that quotes one
+particular wording as a promise is wrong for that reason.
 
 The comparison then checks that both message lists have the same
 length and that each position is equal as a parsed object, that

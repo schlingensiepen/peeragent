@@ -166,7 +166,8 @@ code 4 for a harness that died and the exit code 130 after Ctrl-C
 were seen once with a stand-in program (`observed` 2026-09-29), not
 with a real harness. Every other row, among them a missing `git`,
 a session name collision, a failed paste, a missing `ps` and an
-unwritable log directory, is written from the design and has not been
+unwritable log directory, is written from the intended behaviour and
+has not been
 reproduced on a host: `unverified`.
 
 | What you see | Exit | Cause | Remedy |

@@ -1860,7 +1860,10 @@ cmd_start_agent() {
     fatal 2 "folder does not exist or is not a directory: $ARG_FOLDER" \
       "pass an existing working directory with --folder"
   fi
-  if ((ARG_GIT_REPO)) && [[ -e "$ARG_FOLDER/.git" ]]; then
+  # An entry of any kind counts, and a symlink is not followed: in a
+  # submodule or a worktree .git is a file, and a dangling symlink is
+  # still an entry somebody put there on purpose.
+  if ((ARG_GIT_REPO)) && { [[ -e "$ARG_FOLDER/.git" ]] || [[ -L "$ARG_FOLDER/.git" ]]; }; then
     fatal 2 "folder is already a git repo" \
       "drop --git-repo; the working directory already holds a repository, and peeragent never initialises over one"
   fi
@@ -2261,7 +2264,10 @@ parse_args() {
     a=$1
     case $a in
       --json) ;;
-      --no-log) NO_LOG=1 ;;
+      # Takes effect the moment it is read, not when the log is set up
+      # further down: an argument error happens in between, and it would
+      # otherwise write the file the caller just refused.
+      --no-log) NO_LOG=1; LOG_ENABLED=0 ;;
       --verbose) VERBOSE=1 ;;
       --no-color) NO_COLOR_FLAG=1 ;;
       --log-file)
@@ -2347,7 +2353,6 @@ parse_args() {
     # The two contradict each other, and the refusal honours the more
     # restrictive one: somebody who asked for no log does not get a file
     # written as a side effect of being told off.
-    LOG_ENABLED=0
     fatal 2 "--no-log and --log-file contradict each other" \
       "pass either --no-log to write no log at all, or --log-file <path> to choose where the log goes"
   fi
