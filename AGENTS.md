@@ -1,10 +1,10 @@
 # AGENTS.md
 
-**State:** the command-line programs are not in this repository yet.
-`tools/` is empty, so the steps below cannot be completed today.
-Read step 1 and stop there: tell the user that peeragent is a
-pre-release without an executable program, and do not promise a
-launch.
+**State:** peeragent 0.1.0 is a pre-release. Both programs are in
+this repository, `tools/peeragent.py` and `tools/peeragent`, and they
+run. What has been checked, and how, is in
+[MATURITY.md](MATURITY.md). Read step 1 before you go on, and promise
+the user only what it covers.
 
 This file is the instruction sheet for an AI agent that wants to
 acquire the peeragent capability for itself: install the program,
@@ -16,13 +16,24 @@ are.
 Read [MATURITY.md](MATURITY.md) before anything else.
 
 The core state, repeated here so that you know it without following
-the link: peeragent 0.1.0 is a pre-release, the programs are not in
-this repository yet, and of the five supported harnesses only
-`claude` is covered by tests across detection, launch, prompt
-delivery, resume and duplicate.
-For `codex` the launch and the prompt hand-over are tested, resume
-rests on harness documentation; for `agy` and `opencode` the prompt
-hand-over has never been run; `duplicate` is refused for everything
+the link: peeragent 0.1.0 is a pre-release. Both programs are in this
+repository and run.
+On 2026-09-29 both were started against all five real harnesses on a
+test host and reported a first screen; a complete path with a trust
+answer and a prompt handed over afterwards with `send` was run through
+to an answer for `agy` only.
+The two programs agree with each other on 41 conformance cases. That
+shows they behave alike, not that either is correct, and none of those
+cases starts a harness.
+`--resume` and `duplicate` have not been run through the programs
+against a real harness.
+
+Of the five supported harnesses only `claude` has detection, launch,
+prompt delivery, resume and duplicate checked on the harness itself.
+For `codex` launch and prompt hand-over are tested and resume rests on
+harness documentation; for `agy` the trust answer and the hand-over by
+pasting were tested on 2026-09-29; for `opencode` the prompt hand-over
+by pasting has never been run; `duplicate` is refused for everything
 except `claude`.
 
 You need this before you act, not after: what you promise the user
@@ -173,6 +184,7 @@ that directory as well if you do not need them.
 This file is the entry point for an agent that *uses* peeragent, not
 a rule sheet for agents changing this repository.
 If you are here to change the code or the documents, read
+[CONTRIBUTING.md](CONTRIBUTING.md) first, then
 [docs/architecture.md](docs/architecture.md) for the layers, the
 handler contract and the equivalence rule between the two
 implementations, and [docs/adr/README.md](docs/adr/README.md) for the

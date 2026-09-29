@@ -5,16 +5,18 @@ assignment, start a harness, recognize the question it stops on,
 answer it with the right key sequence, deliver the prompt that was
 left behind, and look at the result.
 
-Read [`../MATURITY.md`](../MATURITY.md) first. The commands below
-are the specified behaviour; the maturity report says which of
-these paths are tested and whether the programs are present in
-the repository yet. The section "What is evidenced here" at the
-end of this file says which screens on this page come from a test
-run and which are the specified output.
+Read [`../MATURITY.md`](../MATURITY.md) first. The section "What is
+evidenced here" at the end of this file says which screens on this
+page come from a recorded run and which come from earlier checks.
 
-The example uses `copilot`, because it shows the longest path: the
-harness stops on a trust question, the prompt is not delivered,
-and you deliver it afterwards. A shorter variant with `claude`
+The example uses `agy`, because it shows the longest path: the
+harness stops on a trust question, the prompt is not delivered, and
+you deliver it afterwards. The output in steps 3 to 6 is from a run
+on 2026-09-29 with the Python program and Antigravity CLI 1.2.13.
+It is edited in four ways, and only these: paths are replaced by
+neutral ones, the logo and the account line of the start banner are
+left out, long runs of padding are shortened, and the byte count is
+the one of the neutral prompt file. A shorter variant with `claude`
 follows at the end.
 
 Placeholders used throughout: `/srv/project` is the working
@@ -24,36 +26,18 @@ directory, `/srv/project/TASK.md` the assignment,
 ## Step 1: write the task file
 
 The full assignment goes into a file in the working directory, not
-into the prompt. `task-file-template.md` in this directory is the
-form to copy; it covers what the launched harness cannot find out
-by itself.
+into the prompt. The assignment in this example is deliberately
+tiny, so that the run costs nothing and touches nothing. A real
+assignment follows `task-file-template.md` in this directory, which
+covers what the launched harness cannot find out by itself, among
+other things how it reaches you.
 
 ```bash
 cat > /srv/project/TASK.md <<'EOF'
-# Assignment: add a health endpoint
+# Assignment: say ZEBRA
 
-## How to reach me
-Write your replies to /srv/project/.reports/agent-out.md and append,
-never overwrite. I poll that file every 30 seconds. I am running as
-user dev on host build-01, in /srv/tooling.
-
-## Report back after setup
-When you have finished the setup steps below, append one line to the
-reply file saying that you are up, before you start on the change.
-
-## Setup for this project
-- python3 -m venv .venv && . .venv/bin/activate
-- pip install -r requirements-dev.txt
-- read README.md and AGENTS.md in this directory
-- pytest -q, and stop if it is not green before your change
-
-## The change
-Add a GET /healthz endpoint to src/app.py that returns
-{"status": "ok"} with HTTP 200, and one test for it.
-
-## Scope and stop
-Only this endpoint and its test. Do not touch the deployment
-configuration. When the tests pass, append your report and stop.
+Answer with the single word ZEBRA and nothing else.
+Do not read or change any other file. Then stop.
 EOF
 ```
 
@@ -65,25 +49,24 @@ this directory is the form to copy.
 
 ```bash
 cat > /srv/project/.peeragent-prompt.txt <<'EOF'
-Read /srv/project/TASK.md and do what it says. The setup steps
-and the endpoint only, then stop and report as that file says.
+Read /srv/project/TASK.md and do what it says. Then stop.
 EOF
 ```
 
 Why not put the assignment in the prompt directly: the assignment
-contains quotes, braces and newlines, and for two of the five
+contains quotes, braces and newlines, and for three of the five
 harnesses the prompt travels as a command-line argument, where it
 would be visible to every user of the host in the process list.
 peeragent also refuses it. A prompt above 120 effective characters
 ends in exit code 2 before anything starts; absolute paths are not
-counted, so the pointer above spends 104 of the 120.
+counted, so the pointer above spends 36 of the 120.
 
 ## Step 3: start the harness
 
 ```bash
 peeragent start agent \
   --folder /srv/project \
-  --harness copilot \
+  --harness agy \
   --prompt-file /srv/project/.peeragent-prompt.txt \
   --json
 ```
@@ -96,17 +79,17 @@ a JSON array:
 [
 {"type":"info","msg":"tmux found: 3.5a","user_relevant":false}
 ,
-{"type":"info","msg":"harness copilot found: GitHub Copilot CLI 1.0.88.","user_relevant":false}
+{"type":"info","msg":"harness agy found: 1.2.13","user_relevant":false}
 ,
-{"type":"agent.starting","harness":"copilot","folder":"/srv/project","model":null,"resume":false,"prompt_file":"/srv/project/.peeragent-prompt.txt","user_relevant":false}
+{"type":"agent.starting","harness":"agy","folder":"/srv/project","model":null,"resume":false,"prompt_file":"/srv/project/.peeragent-prompt.txt","user_relevant":false}
 ,
-{"type":"agent.pane","session":"peeragent-project-copilot-b7e2d0f1","awaiting":"trust_prompt","lines":["╭ Confirm folder trust ─────────────────────────────╮","│ /srv/project                                      │","│ Do you trust the files in this folder?            │","│ ❯ 1. Yes                                          │","│   2. Yes, and remember this folder for future …   │","│   3. No (Esc)                                     │","╰───────────────────────────────────────────────────╯"],"user_relevant":false}
+{"type":"agent.pane","session":"peeragent-project-agy-27f1d588","awaiting":"trust_prompt","lines":["Accessing workspace:","","/srv/project","","Do you trust the contents of this project?","","Antigravity CLI requires permission to read, edit, and execute files here.","","> Yes, I trust this folder","  No, exit","","  ↑/↓ Navigate · enter Confirm","                        Gemini 3.8 Flash · high"],"user_relevant":false}
 ,
-{"type":"warn","msg":"harness copilot is awaiting trust-prompt confirmation","user_relevant":true,"hint":"send '1' to trust: tmux send-keys -t '=peeragent-project-copilot-b7e2d0f1:' 1"}
+{"type":"warn","msg":"harness agy is awaiting trust-prompt confirmation","user_relevant":true,"hint":"send 'Enter' to trust: tmux send-keys -t '=peeragent-project-agy-27f1d588:' Enter"}
 ,
-{"type":"agent.prompt_deferred","session":"peeragent-project-copilot-b7e2d0f1","prompt_file":"/srv/project/.peeragent-prompt.txt","awaiting":"trust_prompt","delivery":"argv","hint":"the prompt was passed as a command-line argument; once the pane has reached a state you understand, capture it - if the harness did not pick the prompt up, deliver with: peeragent send --session peeragent-project-copilot-b7e2d0f1 --prompt-file /srv/project/.peeragent-prompt.txt","user_relevant":true}
+{"type":"agent.prompt_deferred","session":"peeragent-project-agy-27f1d588","prompt_file":"/srv/project/.peeragent-prompt.txt","awaiting":"trust_prompt","delivery":"send_keys","hint":"deliver with: peeragent send --session peeragent-project-agy-27f1d588 --prompt-file /srv/project/.peeragent-prompt.txt","user_relevant":true}
 ,
-{"type":"agent.started","session":"peeragent-project-copilot-b7e2d0f1","pane_pid":18510,"child_processes":[{"pid":18511,"comm":"MainThread","args":"/usr/local/lib/copilot-linux-x64/copilot"}],"hint":"watch with: tmux attach -r -t '=peeragent-project-copilot-b7e2d0f1'","user_relevant":false}
+{"type":"agent.started","session":"peeragent-project-agy-27f1d588","pane_pid":67615,"child_processes":[],"hint":"watch with: tmux attach -r -t '=peeragent-project-agy-27f1d588'","user_relevant":false}
 ]
 ```
 
@@ -118,12 +101,12 @@ is waiting for an answer. What to read out of it:
   harness stops on something the first time: on the trust question
   if the directory is new to it, or on a login or provider question
   if none is configured on the machine.
-- `agent.prompt_deferred` says the assignment may **not** have
-  reached the harness, and `delivery` is `argv`: it was on the
-  command line, so it may be taken up once the dialog is answered.
-  Step 5 says how to tell.
+- `agent.prompt_deferred` says the assignment has **not** reached
+  the harness, and `delivery` is `send_keys`: this harness takes its
+  prompt by paste, and peeragent pastes only into a screen that is
+  ready. Step 5 delivers it.
 - `agent.started.session` is the name you need for every
-  follow-up command. Keep it — and tell the user, together with
+  follow-up command. Keep it, and tell the user, together with
   the read-only attach line from the hint. That is how they can
   look at the harness themselves when a screen does not match
   anything described here.
@@ -135,15 +118,29 @@ reads the output; see [`../docs/output-format.md`](../docs/output-format.md).
 ## Step 4: answer the trust question
 
 peeragent does not answer for you in version 0.1.0. The hint of
-the warning contains the whole command. For `copilot` the answer
-is option 1:
+the warning contains the whole command. For `agy` the answer is
+a bare `Enter`, because its dialog preselects "Yes, I trust this
+folder":
 
 ```bash
-tmux send-keys -t "=peeragent-project-copilot-b7e2d0f1:" 1
+tmux send-keys -t "=peeragent-project-agy-27f1d588:" Enter
 ```
 
 Note the `:` at the end of the target. Pane commands need it;
 without it tmux reads the name as a window name and fails.
+
+Four seconds later the pane looked like this (banner logo and
+account line left out):
+
+```text
+                  Antigravity CLI 1.2.13
+                  Gemini 3.8 Flash (High)
+                  /srv/project
+─────────────────────────────────────────────
+>
+─────────────────────────────────────────────
+? for shortcuts                Gemini 3.8 Flash · high
+```
 
 Per harness, the first start in a new directory and its answer:
 
@@ -155,8 +152,9 @@ Per harness, the first start in a new directory and its answer:
 | `agy` | trust question, or a login selection with no account | `Enter` |
 | `opencode` | provider selection | none; the user has to run `/connect` |
 
-The key sequences were tested on 2026-09-23 and corrected on
-2026-09-28. `claude` needs `Down Enter` because its dialog
+The sequences for `claude`, `codex` and `copilot` were tested on
+2026-09-23 and corrected on 2026-09-28; the one for `agy` on
+2026-09-29. `claude` needs `Down Enter` because its dialog
 preselects "No, exit". For `codex` and `copilot` the digit alone
 both selects and confirms, so nothing follows it. For `codex`,
 answering also trusts the whole git root, not just the folder you
@@ -164,11 +162,14 @@ pointed at, so tell the user before you answer.
 
 A harness update may change any of these dialogs. If the screen
 does not match the description, send nothing and attach to the
-session instead.
+session instead. The same goes for a screen reported as `unknown`:
+a `codex` that opens with an offer to update itself is one, and
+the digit that trusts a folder in another harness would start an
+installation there.
 
-For `agy` and `opencode` there is nothing to send. Inform the user
-and stop; the login and the provider setup are interactive and
-external.
+For `opencode`, and for `agy` on a machine with no account, there
+is nothing to send. Inform the user and stop; the login and the
+provider setup are interactive and external.
 
 ## Step 5: deliver the prompt
 
@@ -179,7 +180,7 @@ prompt and would carry out the assignment twice.
 
 ```bash
 peeragent send \
-  --session peeragent-project-copilot-b7e2d0f1 \
+  --session peeragent-project-agy-27f1d588 \
   --prompt-file /srv/project/.peeragent-prompt.txt \
   --json
 ```
@@ -188,22 +189,24 @@ peeragent send \
 [
 {"type":"info","msg":"tmux found: 3.5a","user_relevant":false}
 ,
-{"type":"info","msg":"harness copilot found: GitHub Copilot CLI 1.0.88.","user_relevant":false}
+{"type":"info","msg":"harness agy found: 1.2.13","user_relevant":false}
 ,
-{"type":"agent.pane","session":"peeragent-project-copilot-b7e2d0f1","awaiting":"ready","lines":["  █ ▘▝ █  Check for mistakes.","","❯"],"user_relevant":false}
+{"type":"agent.pane","session":"peeragent-project-agy-27f1d588","awaiting":"ready","lines":["","","      ▄▀▀▄        Antigravity CLI 1.2.13","","    ▀▀▀▀▀▀▀▀      Gemini 3.8 Flash (High)","   ▄▀▀    ▀▀▄     /srv/project","","────────────────────────────────────────────────────────────",">","────────────────────────────────────────────────────────────","? for shortcuts                        Gemini 3.8 Flash · high"],"user_relevant":false}
 ,
-{"type":"agent.prompt_sent","session":"peeragent-project-copilot-b7e2d0f1","bytes":118,"user_relevant":false}
+{"type":"agent.prompt_sent","session":"peeragent-project-agy-27f1d588","bytes":58,"user_relevant":false}
 ,
-{"type":"agent.pane","session":"peeragent-project-copilot-b7e2d0f1","awaiting":"busy","lines":["❯ Read /srv/project/TASK.md and carry out the assignment described there.","❯","○ Working esc interrupt"],"user_relevant":false}
+{"type":"agent.pane","session":"peeragent-project-agy-27f1d588","awaiting":"ready","lines":["","","      ▄▀▀▄        Antigravity CLI 1.2.13","","    ▀▀▀▀▀▀▀▀      Gemini 3.8 Flash (High)","   ▄▀▀    ▀▀▄     /srv/project","","────────────────────────────────────────────────────────────","> Read /srv/project/TASK.md and do what it says. Then stop.","⡿  Generating...","────────────────────────────────────────────────────────────",">","────────────────────────────────────────────────────────────","esc to cancel                          Gemini 3.8 Flash · high"],"user_relevant":false}
 ]
 ```
 
 The first `agent.pane` is the screen before the paste, the second
-the screen after it. `awaiting: busy` in the second one is what
-you want to see: the harness took the prompt and started working.
-
-If it had come back `ready` again, the paste did not land. Look at
-the pane before sending a second time.
+the screen after it. Read the second one carefully. The prompt is
+in the input area and a `Generating...` line shows that the harness
+took it and is working, yet `awaiting` is `ready`. peeragent has no
+busy marker for `agy`, and the bare `>` input line stays on screen
+while it works (`observed`, see MATURITY.md). For this harness the
+evidence that the prompt landed is the pane, not the `awaiting`
+value. Look at the pane before sending a second time.
 
 ## Step 6: look at the result
 
@@ -211,42 +214,39 @@ While the harness works, capture the pane as often as you like.
 This is read-only and does not disturb it:
 
 ```bash
-tmux capture-pane -t "=peeragent-project-copilot-b7e2d0f1:" -p
+tmux capture-pane -t "=peeragent-project-agy-27f1d588:" -p
 ```
 
-A `copilot` pane in the middle of a turn looks like this. Captured
-on 2026-09-23 during a test with a three-line prompt, so the text
-is that test's, not this example's:
+Eight seconds after the paste it showed:
 
 ```text
- ❯ Line one of the prompt: please answer with the single word ZEBRA.
-   Line two: do not read any files.
-   Line three: then stop.
- ❯
-  ○ Working esc interrupt                       Auto → mai-code-1.1-flash
+> Read /srv/project/TASK.md and do what it says. Then stop.
+● Read(/srv/project/TASK.md) (ctrl+o to expand)
+  ZEBRA
+─────────────────────────────────────────────
+>
+─────────────────────────────────────────────
+? for shortcuts                Gemini 3.8 Flash · high
 ```
 
-`○ Working esc interrupt` is the marker peeragent reads as `busy`.
-When the turn finishes, that line is gone and the bare `❯` line
-remains; that is `ready`.
+The `● Read(...)` line is the harness reading the task file that the
+pointer prompt named, and `ZEBRA` is what the task file asked for.
 
 To let the user watch, pass on the attach line from
 `agent.started`:
 
 ```bash
-tmux attach -r -t "=peeragent-project-copilot-b7e2d0f1"
+tmux attach -r -t "=peeragent-project-agy-27f1d588"
 ```
 
 `-r` is read-only. The user can watch and scroll without typing
 into the harness by accident. Detaching is the usual tmux key,
 `Ctrl-b d` in a default configuration.
 
-The harness's own reply arrives wherever your assignment told it
-to write. In this example that is
-`/srv/project/.reports/agent-out.md`, so the finished run is
-visible there and in the project's git status, not in peeragent's
-output. peeragent builds no channel back to you; that is why the
-task file has to describe one.
+In a real assignment the harness's reply arrives wherever the task
+file told it to write, and it is visible there and in the project's
+git status, not in peeragent's output. peeragent builds no channel
+back to you; that is why the task file has to describe one.
 
 Every peeragent call also wrote a log file:
 
@@ -264,14 +264,16 @@ wrong thing to paste into a public channel unread.
 
 peeragent returns as soon as it has reported the first screen. The
 harness keeps running in tmux, and peeragent never ends a session
-it started. Cleaning up is yours:
+it started. Cleaning up is yours, one session at a time, by its
+exact name:
 
 ```bash
-tmux kill-session -t "=peeragent-project-copilot-b7e2d0f1"
+tmux kill-session -t "=peeragent-project-agy-27f1d588"
 ```
 
 Do that only once the harness has finished and you have its
-reply.
+reply. Do not use `tmux kill-server`: the sessions run on your own
+tmux server, together with everything else you have there.
 
 ## The shorter path: claude
 
@@ -324,30 +326,32 @@ captures twice before deciding.
 
 ## What is evidenced here
 
+- Recorded run, 2026-09-29, Antigravity CLI 1.2.13 and tmux 3.5a,
+  Python program: the output of steps 3 and 5 and the pane text of
+  steps 4 and 6, with the edits named at the top. The Bash program
+  was taken through the same path in a second directory; it gave the
+  same `awaiting` value at every step, including `ready` in the
+  pane that was still generating (`observed`, not recorded line by
+  line).
 - Tested on 2026-09-23: the trust dialog wording of `claude` and
   its `Down Enter` answer; the trust answer for `codex` and
-  `copilot`; the `copilot` busy marker `○ Working esc interrupt`
-  and its bare `❯` ready line; `claude` picking up an argument
-  prompt after the trust answer; `codex` doing the same; a paste
-  arriving during a `copilot` turn being buffered rather than
-  lost.
+  `copilot`; the two `claude` pane captures in the variant below;
+  `claude` picking up an argument prompt after the trust answer;
+  `codex` doing the same.
 - Tested on 2026-09-28, correcting the above: `codex` and
   `copilot` confirm their dialogs on the digit alone, so the trust
   answer for both is `1` and not `1` followed by `Enter`. An
   `Enter` sent after it lands in the session that is by then
-  already running. The two pane captures reproduced
-  above are from that run, with a short test prompt in place of
-  this example's.
-- Not recorded end to end: this page is not a transcript of one
-  session. The JSON blocks are the specified output for these
-  calls, assembled from the specification rather than copied from
-  a log, and the pane content inside them is illustrative.
-- Not confirmed: the ready markers of `agy`, `opencode` and
-  `codex`. A healthy first screen from those three may come back
-  as `awaiting: unknown`. Show it to the user rather than
-  treating it as a failure. `agy` was not tested past its login
-  selection and `opencode` not past its provider selection, both
-  for want of an account on the test host.
+  already running.
+- Not run through peeragent: the `claude` variant below. Its screens
+  and its `Down Enter` answer come from checks on the harness
+  itself; the start command for it is the same as above with a
+  different `--harness`.
+- Not confirmed: the ready markers of `codex` and `opencode`. A
+  healthy first screen from those two may come back as
+  `awaiting: unknown`. Show it to the user rather than treating it
+  as a failure. `opencode` was not run past its provider selection
+  for want of a provider on the test host.
 
 For the flags used above, see [`../docs/cli.md`](../docs/cli.md);
 for the message types and fields,

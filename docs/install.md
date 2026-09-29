@@ -6,10 +6,9 @@ that wants to acquire the capability; this document adds the
 variants, the file permissions, the verification and the removal.
 
 Read [`../MATURITY.md`](../MATURITY.md) before you start. It says
-which parts of the tool exist, which are tested, and whether the
-programs are present in the repository at all. The commands below
-describe the installation as specified; the maturity report says
-what you can expect of it today.
+which parts of the tool are tested and how. The commands below
+describe the installation; the maturity report says what you can
+expect of the tool once it is installed.
 
 ## Requirements
 

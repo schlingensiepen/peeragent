@@ -8,9 +8,10 @@ This file describes the plain-text templates, the JSON frame, the
 complete message vocabulary with the fields of each type, the
 `awaiting` values, the exit codes and the log files.
 
-It describes the promised output contract, not the state of the
-code: which parts already exist and how strongly each statement is
-backed is recorded in [../MATURITY.md](../MATURITY.md).
+It describes the output of both programs in version 0.1.0. How far
+each statement is backed by a run, and how far only by the two
+programs agreeing with each other, is recorded in
+[../MATURITY.md](../MATURITY.md).
 
 Which subcommand emits which messages, and in which order, is in
 [cli.md](cli.md).
@@ -390,6 +391,11 @@ The only switches are `--no-log` and `--log-file`.
 
 The examples below are shortened and use placeholder paths.
 `/srv/foo` stands for a working directory.
+They are written out to show the shape of each message, not copied
+from one recorded run: the message types, field names and value
+types are what the programs emit, while the values and the pane lines are illustrative.
+A recorded run is in
+[../examples/quick-start.md](../examples/quick-start.md).
 
 `list harness --json` on a host where one harness is absent and one
 did not answer the version query in time:

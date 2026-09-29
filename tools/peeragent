@@ -1622,11 +1622,15 @@ pf_tmux() {
       "peeragent runs every harness inside a tmux session and needs tmux 3.2 or newer; install the 'tmux' package of your distribution, see docs/harnesses.md"
   fi
   run "$TIMEOUT_TMUX" tmux -V
-  v=""
-  if ((RUN_RC == 0)); then
-    trim4 "${RUN_OUT#tmux }"
-    v=$TRIMMED
+  # A binary that is there but cannot answer is not a usable tmux: the
+  # runtime depends on it, so this refuses rather than carrying an
+  # unknown version forward.
+  if ((RUN_RC != 0)); then
+    fatal 3 "tmux is installed but did not answer a version query" \
+      "run 'tmux -V' by hand; a tmux that cannot report its version will not carry a session either"
   fi
+  trim4 "${RUN_OUT#tmux }"
+  v=$TRIMMED
   [[ -n $v ]] || v="unknown"
   TMUX_VERSION=$v
   emit info msg=s:"tmux found: $v"
@@ -1641,11 +1645,12 @@ pf_git() {
       "--git-repo runs 'git init -b main' in the working directory and needs git; install the 'git' package of your distribution, see docs/harnesses.md"
   fi
   run_git "$TIMEOUT_GIT" git --version
-  v=""
-  if ((RUN_RC == 0)); then
-    trim4 "${RUN_OUT#git version }"
-    v=$TRIMMED
+  if ((RUN_RC != 0)); then
+    fatal 3 "git is installed but did not answer a version query" \
+      "run 'git --version' by hand; this call is only made when --git-repo was asked for"
   fi
+  trim4 "${RUN_OUT#git version }"
+  v=$TRIMMED
   [[ -n $v ]] || v="unknown"
   GIT_VERSION=$v
   emit info msg=s:"git found: $v"
@@ -1993,6 +1998,11 @@ cmd_start_agent() {
         emit error msg=s:"could not paste the prompt into $sess" \
           user_relevant=b:true \
           hint=s:"tmux reported: ${PASTE_ERR:-no error output}; deliver it again with: peeragent send --session $sess --prompt-file $ARG_PROMPT_FILE"
+        # The error already says what happened and how to repeat it. A
+        # deferred message on top would report the same thing a second
+        # time with a different name, and the deferred message belongs to
+        # a pane that was not ready - this one was.
+        delivered=1
       fi
     fi
     if ((delivered == 0)); then
@@ -2320,6 +2330,10 @@ parse_args() {
   done
 
   if ((NO_LOG)) && [[ -n ${SEEN_FLAG[log-file]+x} ]]; then
+    # The two contradict each other, and the refusal honours the more
+    # restrictive one: somebody who asked for no log does not get a file
+    # written as a side effect of being told off.
+    LOG_ENABLED=0
     fatal 2 "--no-log and --log-file contradict each other" \
       "pass either --no-log to write no log at all, or --log-file <path> to choose where the log goes"
   fi

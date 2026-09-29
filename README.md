@@ -18,12 +18,12 @@ harness.
 
 ## Maturity
 
-peeragent 0.1.0 is a pre-release: the command-line programs are not
-in this repository yet, so nothing described below can be run today,
-and of the five supported harnesses only `claude` is covered by
-tests across detection, launch, prompt delivery, resume and
-duplicate.
-This document describes the contract the implementation has to meet.
+peeragent 0.1.0 is a pre-release: both programs are in this
+repository and run. They were started against all five real
+harnesses on 2026-09-29, and the two agree with each other on 41
+conformance cases, which shows equivalence and not correctness. Of
+the five supported harnesses only `claude` has detection, launch,
+prompt delivery, resume and duplicate checked on the harness itself.
 What is tested, what rests on harness documentation and what is
 still an assumption is listed per command and per harness in
 [MATURITY.md](MATURITY.md); read it before you rely on any statement
@@ -152,10 +152,10 @@ the channel.
 | [docs/adr/README.md](docs/adr/README.md) | The decisions behind the design |
 | [skills/launch-peer-agent/SKILL.md](skills/launch-peer-agent/SKILL.md) | The Claude Code skill shipped with the tool |
 | [examples/quick-start.md](examples/quick-start.md) | One session from start to finish |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Changing the two programs, the conformance test, reporting a harness-specific bug |
 | [CHANGELOG.md](CHANGELOG.md) | What changed per version |
 
-`tools/` and `tests/` are empty in this pre-release; see
-[MATURITY.md](MATURITY.md).
+To change the code or the tests, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Reporting issues
 

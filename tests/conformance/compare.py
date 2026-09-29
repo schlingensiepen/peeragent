@@ -14,6 +14,7 @@ to stdout and exit non-zero on any difference.
 """
 
 import json
+import pathlib
 import re
 import sys
 
@@ -142,6 +143,56 @@ def compare_json(a_path, b_path, boxes):
     return problems
 
 
+def log_types(state_dir):
+    """The message types of the newest log under a sandbox HOME.
+
+    The specification asks for the same sequence of types in both logs,
+    with debug and timing left out - those are diagnostic noise whose
+    number legitimately differs. A log that cannot be parsed is itself a
+    finding: the frame has to survive every path.
+    """
+    logs = pathlib.Path(state_dir, ".local", "state", "peeragent", "logs")
+    if not logs.is_dir():
+        return None, "no log directory"
+    files = sorted(logs.glob("*.jsonl"), key=lambda f: f.stat().st_mtime)
+    if not files:
+        return None, "no log file"
+    types = []
+    for n, line in enumerate(
+        files[-1].read_text(encoding="utf-8", errors="replace").splitlines(), 1
+    ):
+        line = line.strip()
+        if not line or line in ("[", "]", ","):
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError as exc:
+            return None, f"line {n} of {files[-1].name} is not JSON: {exc}"
+        t = obj.get("type")
+        if t not in ("debug", "timing"):
+            types.append(t)
+    return types, None
+
+
+def compare_logs(home_a, home_b):
+    a, err_a = log_types(home_a)
+    b, err_b = log_types(home_b)
+    if err_a and err_b:
+        # Neither wrote one. Legitimate when the case passes --no-log or
+        # fails before the log is opened, as long as both agree.
+        return []
+    problems = []
+    if err_a:
+        problems.append(f"log, python: {err_a} (bash wrote one)")
+    if err_b:
+        problems.append(f"log, bash: {err_b} (python wrote one)")
+    if problems:
+        return problems
+    if a != b:
+        problems.append(f"log message types: python {a} vs bash {b}")
+    return problems
+
+
 def compare_plain(a_path, b_path):
     """Plain text is compared by shape, not wording."""
     a = [l for l in open(a_path, encoding="utf-8", errors="replace")]
@@ -191,6 +242,10 @@ def main():
                 problems.append(f"{label}: help output starts an array")
     else:
         raise SystemExit(f"unknown mode: {mode}")
+
+    # The log is compared for every case: the specification asks for the
+    # same sequence of message types in both, whatever the mode.
+    problems += compare_logs(boxes[0][1], boxes[1][1])
 
     for p in problems:
         print(f"  {p}")

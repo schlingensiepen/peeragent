@@ -10,9 +10,10 @@ installed harnesses and their model catalogs.
 This file is the reference for every subcommand, every flag, the
 preflight checks in their order, the message order and the exit
 codes.
-It describes the behaviour peeragent promises, not the state of the
-code: which parts already exist and how strongly each statement is
-backed is recorded in [../MATURITY.md](../MATURITY.md).
+It describes what both programs do in version 0.1.0. How far each
+statement is backed by a run, and how far only by the two programs
+agreeing with each other, is recorded in
+[../MATURITY.md](../MATURITY.md).
 
 Message shapes, field tables per message type and the meaning of
 each exit code are in [output-format.md](output-format.md).

@@ -83,6 +83,7 @@ class Emitter:
         self._stdout_first = True
         self._log_first = True
         self._log_file = None
+        self._default_log_path = True
         self._log_buffer = []
         self._closed = False
         self.exit_code = 0
@@ -218,13 +219,19 @@ class Emitter:
         self._log_file.write(self._to_json_line(obj) + "\n")
         self._log_first = False
 
-    def open_log(self, path: Optional[str]) -> Optional[str]:
+    def open_log(self, path: Optional[str], is_default: bool = True) -> Optional[str]:
         """Try to open the log file; returns a warning message on failure."""
+        self._default_log_path = is_default
         if path is None:
             self._log_buffer = []
             return None
         try:
-            os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+            # Only the default location is created on demand. A path the
+            # caller chose is taken as given: silently creating a
+            # directory somewhere in their filesystem is a surprise, and
+            # a mistyped path should be reported rather than realised.
+            if self._default_log_path:
+                os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
             self._log_file = open(path, "w", encoding="utf-8")
             self._log_file.write("[\n")
             for buffered in self._log_buffer:
@@ -253,6 +260,11 @@ class Emitter:
                 pass
 
     def fatal(self, msg: str, hint: str, code: int) -> None:
+        # A fatal during argument parsing happens before the log is open.
+        # Opening it here is what keeps the failing run in the log at all,
+        # and it is the run most worth reading afterwards.
+        if self._log_file is None and "--no-log" not in sys.argv:
+            self.open_log(default_log_path("invalid"))
         self.emit({"type": "fatal", "msg": msg, "hint": hint, "user_relevant": True})
         self.exit_code = code
         self.close()
@@ -349,12 +361,13 @@ def decode(data: Optional[bytes]) -> str:
 
 
 def first_stdout_line(cp) -> str:
+    """The first line of stdout, whitespace trimmed. Not the first
+    non-empty one: a harness that opens with a blank line has a blank
+    version line, and guessing past it is how two programs come to
+    report different versions for the same binary."""
     text = decode(cp.stdout) if cp is not None else ""
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped:
-            return stripped
-    return ""
+    lines = text.splitlines()
+    return lines[0].strip() if lines else ""
 
 
 def git_env() -> dict:
@@ -514,7 +527,12 @@ def generic_detect(binary: str) -> HarnessInfo:
     if path is None:
         return HarnessInfo(installed=False, path=None, version=None)
     cp = run_subprocess([binary, "--version"], timeout=TMUX_DETECT_TIMEOUT)
-    version = first_stdout_line(cp) if cp is not None else ""
+    # A version query that fails has no answer, whatever it printed
+    # before failing. The binary is still there, so this is a warning
+    # and not a missing harness.
+    if cp is None or cp.returncode != 0:
+        return HarnessInfo(installed=True, path=path, version=None)
+    version = first_stdout_line(cp)
     return HarnessInfo(installed=True, path=path, version=version or None)
 
 
@@ -616,6 +634,8 @@ class ClaudeHandler(Handler):
         dst_dir = os.path.join(self._config_dir(), "projects", self._sanitize(dst))
         if not os.path.isdir(src_dir):
             return DuplicateResult(status="ok", files=0, bytes=0, session_dir=None)
+        # Raised through to the core, which turns it into a fatal: a
+        # handler never emits, and it never decides an exit code.
         shutil.copytree(src_dir, dst_dir, symlinks=True, dirs_exist_ok=False)
         files, total = count_files_bytes(dst_dir)
         return DuplicateResult(status="ok", files=files, bytes=total, session_dir=dst_dir)
@@ -756,6 +776,13 @@ class OpencodeHandler(Handler):
     def detect_prompt_type(self, pane_text):
         if "Run /connect" in pane_text:
             return "provider_prompt"
+        # The input placeholder. The provider question is checked first,
+        # so this only decides a screen that is otherwise unclassified.
+        # It has never been seen on a configured host - no provider is
+        # set up on the test machine - so it rests on the earlier direct
+        # check of the harness, not on a run through this program.
+        if "Ask anything" in pane_text:
+            return "ready"
         return "unknown"
 
 
@@ -955,7 +982,11 @@ def paste_prompt(name: str, prompt_text: str) -> tuple[bool, str]:
     always sent afterwards. Bracketed paste (-p) keeps tmux from turning
     embedded newlines into a run of separately submitted lines."""
     content = prompt_text.rstrip("\r\n")
+    # A TMPDIR that is set but does not exist falls back, rather than
+    # ending the run with a traceback over a scratch file.
     tmpdir = os.environ.get("TMPDIR", "/tmp")
+    if not os.path.isdir(tmpdir):
+        tmpdir = "/tmp"
     buf_name = f"peeragent-{os.getpid()}"
     fd, tmp_path = tempfile.mkstemp(dir=tmpdir, prefix="peeragent-prompt-")
     try:
@@ -1073,6 +1104,17 @@ def require_harness_installed(emitter: Emitter, handler: Handler) -> HarnessInfo
             f"see docs/harnesses.md for install instructions",
             3,
         )
+    emit_harness_found(emitter, handler, info)
+    return info
+
+
+def emit_harness_found(emitter: Emitter, handler: Handler, info: HarnessInfo) -> None:
+    """The success message for a detected harness, in one place.
+
+    An unknown version is always followed by a warning. It was written
+    out at four call sites before, and three of them had forgotten the
+    warning - which is what a single place is for.
+    """
     if info.version is None:
         emitter.info(f"harness {handler.key} found, version unknown")
         emitter.warn(
@@ -1082,7 +1124,6 @@ def require_harness_installed(emitter: Emitter, handler: Handler) -> HarnessInfo
         )
     else:
         emitter.info(f"harness {handler.key} found: {info.version}")
-    return info
 
 
 def require_git_installed(emitter: Emitter) -> None:
@@ -1148,13 +1189,13 @@ def check_prompt_file(emitter: Emitter, path: str) -> tuple[str, int]:
 # ---------------------------------------------------------------------------
 
 def cmd_version(emitter: Emitter, json_mode: bool) -> int:
-    if json_mode:
-        emitter.emit({
-            "type": "version", "version": PEERAGENT_VERSION, "impl": IMPL_NAME,
-            "user_relevant": False,
-        })
-    else:
-        print(f"peeragent {PEERAGENT_VERSION}")
+    # Through the emitter in both modes. Printing directly would keep
+    # the message out of the log, and the log is meant to hold every
+    # message of a run, whatever the output mode was.
+    emitter.emit({
+        "type": "version", "version": PEERAGENT_VERSION, "impl": IMPL_NAME,
+        "user_relevant": False,
+    })
     return 0
 
 
@@ -1192,10 +1233,7 @@ def cmd_list_models(emitter: Emitter, harness_key: Optional[str]) -> int:
                 f"see docs/harnesses.md for install instructions",
                 3,
             )
-        if info.version is None:
-            emitter.info(f"harness {handler.key} found, version unknown")
-        else:
-            emitter.info(f"harness {handler.key} found: {info.version}")
+        emit_harness_found(emitter, handler, info)
         for model in handler.list_models():
             emitter.emit({
                 "type": "model.available", "harness": handler.key, **model,
@@ -1211,10 +1249,7 @@ def cmd_list_models(emitter: Emitter, harness_key: Optional[str]) -> int:
         info = handler.detect()
         if not info.installed:
             continue
-        if info.version is None:
-            emitter.info(f"harness {key} found, version unknown")
-        else:
-            emitter.info(f"harness {key} found: {info.version}")
+        emit_harness_found(emitter, handler, info)
         installed.append(key)
     for key in installed:
         handler = HANDLERS[key]
@@ -1242,7 +1277,10 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
                 "pass an existing directory via --folder",
                 2,
             )
-        if ns.git_repo and os.path.isdir(os.path.join(folder, ".git")):
+        # A .git entry of any kind counts: in a submodule or a worktree
+        # it is a file, not a directory, and this repository is itself a
+        # submodule.
+        if ns.git_repo and os.path.lexists(os.path.join(folder, ".git")):
             emitter.fatal("folder is already a git repo", "drop --git-repo, or start in a fresh folder", 2)
         if ns.git_repo:
             require_git_installed(emitter)
@@ -1277,7 +1315,12 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
         argv += handler.model_argv(ns.model)
     if prompt_content is not None and handler.prompt_delivery == "argv":
         argv += handler.prompt_prefix_argv()
-        argv += [prompt_content]
+        # Trailing newlines are stripped on both delivery paths. On the
+        # paste path they would submit the prompt before it is complete;
+        # here they simply do not belong in an argument, and a shell
+        # cannot preserve them anyway, so keeping them would hand the
+        # harness different text depending on which program ran.
+        argv += [prompt_content.rstrip("\r\n")]
 
     emitter.emit({
         "type": "agent.starting", "harness": handler.key, "folder": folder,
@@ -1432,10 +1475,7 @@ def cmd_send(emitter: Emitter, ns) -> int:
         if handler is not None:
             info = handler.detect()
             if info.installed:
-                if info.version is None:
-                    emitter.info(f"harness {handler.key} found, version unknown")
-                else:
-                    emitter.info(f"harness {handler.key} found: {info.version}")
+                emit_harness_found(emitter, handler, info)
             else:
                 emitter.warn(f"harness {handler.key} is not installed on this host",
                              "the prompt is delivered anyway; the harness binary is not needed for send")
@@ -1522,10 +1562,7 @@ def cmd_duplicate(emitter: Emitter, ns) -> int:
             f"see docs/harnesses.md for install instructions",
             3,
         )
-    if info.version is None:
-        emitter.info(f"harness {handler.key} found, version unknown")
-    else:
-        emitter.info(f"harness {handler.key} found: {info.version}")
+    emit_harness_found(emitter, handler, info)
 
     if handler.session_store_exists(dst):
         emitter.fatal(
@@ -1554,14 +1591,33 @@ def cmd_duplicate(emitter: Emitter, ns) -> int:
 
     if not os.path.exists(dst):
         with Stopwatch(emitter, "workspace-copy"):
-            shutil.copytree(src, dst, symlinks=True, dirs_exist_ok=False)
+            try:
+                shutil.copytree(src, dst, symlinks=True, dirs_exist_ok=False)
+            except (OSError, shutil.Error) as exc:
+                # A half-finished copy is the caller's to inspect; saying
+                # so is more use than a traceback, and the partial tree is
+                # left where it is rather than guessed at.
+                emitter.fatal(
+                    f"copying the working directory failed: {exc}",
+                    f"check permissions and free space; {dst} may hold a "
+                    f"partial copy that peeragent did not remove",
+                    1,
+                )
             files, total = count_files_bytes(dst)
         emitter.info("copied workspace", files=files, bytes_=total)
     else:
         emitter.info("workspace already present, skipped copy")
 
     with Stopwatch(emitter, "session-copy"):
-        dup = handler.duplicate_session(src, dst)
+        try:
+            dup = handler.duplicate_session(src, dst)
+        except (OSError, shutil.Error) as exc:
+            emitter.fatal(
+                f"copying the session store failed: {exc}",
+                "the working directory was copied; the harness will start a "
+                "fresh session in it unless you copy the store by hand",
+                1,
+            )
     if dup.session_dir is None and dup.files == 0 and dup.bytes == 0:
         emitter.warn("no session store found for source",
                      "the copy has no session history; a resume in the destination will find nothing")
@@ -1813,6 +1869,9 @@ ACTION_TO_LOG_TOKEN = {
     "send": "send",
     "duplicate": "duplicate",
     "version": "version",
+    # An argument error happens before the subcommand is known, and it is
+    # exactly the run someone will want to look at afterwards.
+    "invalid": "invalid",
 }
 
 
@@ -1883,11 +1942,14 @@ def main() -> int:
     log_token = ACTION_TO_LOG_TOKEN[action]
     if ns.no_log:
         log_path = None
+        chosen_by_caller = False
     elif ns.log_file:
         log_path = abs_path(ns.log_file)
+        chosen_by_caller = True
     else:
         log_path = default_log_path(log_token)
-    warning = emitter.open_log(log_path)
+        chosen_by_caller = False
+    warning = emitter.open_log(log_path, is_default=not chosen_by_caller)
     if warning is not None:
         emitter.warn(warning, "the run continues without a log file")
 

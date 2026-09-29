@@ -61,9 +61,27 @@ captures differ and no trust, auth or provider marker matched, the
 state is `busy`. This is why a start can take a little longer than
 the boot wait suggests.
 
+Two limits of that rule were seen on 2026-09-29.
+
+For a screen that matches no marker but carries something that
+changes, such as a spinner, the outcome depends on where the second
+capture falls. One program reported `unknown` and the other `busy`
+for the same Antigravity screen. Both applied the rule as written,
+and for the caller the two values mean the same thing: look at the
+pane yourself.
+
+The bare `>` input line of the Antigravity CLI is also on screen
+while it generates an answer, and peeragent has no busy marker for
+it. The pane captured right after a `send` was reported as `ready`
+while the harness still showed a generating indicator (`observed`
+2026-09-29, both programs). For that harness, `ready` after a
+`send` does not mean the answer is finished; read the pane.
+
 Markers are matched case-sensitively against the visible pane text.
 When a harness changes its wording in a new release, the result
-becomes `unknown` — never a wrong `ready`.
+becomes `unknown`. A marker that stays on screen while the harness
+works, as with the Antigravity CLI above, is the exception: it
+gives `ready` for a harness that is busy.
 
 ## The first start stops before any work, for two different reasons
 
@@ -81,10 +99,11 @@ Codex CLI and the GitHub Copilot CLI asked for directory trust,
 the Antigravity CLI asked for a login method, and OpenCode had no
 provider. On 2026-09-23, Claude Code 2.1.278 was found to have a
 trust prompt of its own. So on a machine where no account and no
-provider are configured, all five stop. What the two
-account-gated harnesses show on a machine where they are
-configured has not been observed, so treat it as unknown rather
-than as ready.
+provider are configured, all five stop. On 2026-09-29, on a host
+where the Antigravity CLI had an account, it asked the directory
+question and then came up ready (`tested`). What OpenCode shows on
+a machine where a provider is configured has not been observed, so
+treat it as unknown rather than as ready.
 
 | Harness | First screen in a fresh directory | Key sequence |
 |---|---|---|
@@ -133,6 +152,19 @@ directory is usually quiet.
 The exit code is the quickest classifier; the full list is in
 [`cli.md`](cli.md).
 
+How much of this table has been seen: the refusals in preflight
+(exit 2), a missing tmux or harness (exit 3), a version query that
+fails or times out, a folder that is already a repository, and the
+duplicate refusals and destination checks are reached by the
+conformance test, where both programs give the same result; that shows
+agreement, not that the remedy in the last column works. An exit
+code 4 for a harness that died and the exit code 130 after Ctrl-C
+were seen once with a stand-in program (`observed` 2026-09-29), not
+with a real harness. Every other row, among them a missing `git`,
+a session name collision, a failed paste, a missing `ps` and an
+unwritable log directory, is written from the design and has not been
+reproduced on a host: `unverified`.
+
 | What you see | Exit | Cause | Remedy |
 |---|---|---|---|
 | `tmux` reported as missing | 3 | Starting a harness and sending a prompt both need tmux. | Install tmux with your distribution's package manager and run again. |
@@ -159,13 +191,17 @@ Harness-specific pictures worth knowing:
 - **OpenCode, slow first start.** The launcher installs a package
   update before the interface appears (tested 2026-08-17), so the
   first start after an update can outlast the default boot wait.
-  Raise the boot wait.
+  Raise the boot wait. On 2026-09-29 the process list reported at
+  the end of a start showed such an install running, next to an
+  interface that had already come up.
 - **GitHub Copilot CLI, slow trust box.** In the run of
   2026-09-28 the trust box appeared only after eight seconds,
   while the default boot wait is five. A cold first start that is
   reported as `unknown` instead of `trust_prompt` is usually this:
   raise the boot wait and start again. The same applies to a
-  resume, where Claude Code needed eight seconds to replay.
+  resume, where Claude Code needed eight seconds to replay. With a
+  boot wait of nine seconds, all five harnesses had reached a screen
+  peeragent could report on 2026-09-29 (`tested`).
 - **Codex CLI, usage limit.** A dialog beginning
   `You've hit your usage limit` with a model-switch menu is a
   waiting state peeragent has no marker for; it reports `unknown`
@@ -195,8 +231,11 @@ Harness-specific pictures worth knowing:
   person who started you.
 - **Codex CLI, update dialog.** Before anything else the harness can
   offer to update itself, and the preselected option runs a global
-  package install (`tested` 2026-09-28). It carries no marker, so
-  peeragent reports `unknown` — which is the point. **Never send a
+  package install (`tested` 2026-09-28, and again on 2026-09-29 by
+  both programs). It carries no marker, so peeragent reports
+  `unknown` with the visible lines attached, which is the point. The
+  offered version changed within minutes between two starts, because
+  the harness updates itself. **Never send a
   trust answer into a screen that was not reported as a trust
   question:** the digit that means "yes, I trust this folder" in one
   dialog means "install now" in this one, and these harnesses act on
@@ -291,6 +330,11 @@ End a session when you are done with it:
 ```bash
 tmux kill-session -t "=<session>"
 ```
+
+The sessions live on your own tmux server, next to whatever else you
+have running there. End each one by its exact name, as above, and do
+not use `tmux kill-server`, which ends every session on that server,
+including the ones that are not peeragent's.
 
 ## Where the logs are and what they contain
 

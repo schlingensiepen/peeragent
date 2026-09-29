@@ -6,9 +6,8 @@ Semantic Versioning.
 
 ## [0.1.0] - Unreleased
 
-Not released. The command-line programs are not in this repository
-yet; what is verified and what is not is recorded in
-[MATURITY.md](MATURITY.md).
+Not released. Both programs are in this repository; what is verified
+and what is not is recorded in [MATURITY.md](MATURITY.md).
 
 ### Added
 
