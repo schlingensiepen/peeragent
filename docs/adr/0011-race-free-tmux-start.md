@@ -64,3 +64,29 @@ Reading the harness output through a pipe in parallel as a safety
 net. Rejected: it duplicates the capture path and does not help,
 because a full-screen interface does not write anything useful to a
 pipe.
+
+**Wrapping the harness in a shell that outlives it**, so that the
+pane stays open because the shell is still there:
+
+```bash
+tmux new-session -d -s <name> "bash -c \"cd <folder> && <harness>; read\""
+```
+
+This works, it needs no option set after the fact, and it needs no
+kill of any kind - one call instead of four. It is what a sibling
+tool does, and for its purpose it is the better choice.
+
+Rejected here, for one reason: the pane is then never dead. The
+shell is its process, and the shell is alive and waiting. The
+multiplexer reports no exit status, because from its point of view
+nothing exited. The harness's exit code would have to be printed by
+the wrapper and read back out of a captured screen - turning a
+number that the multiplexer hands over into a string to be found
+among the harness's own output, and putting a line of our own into
+the screen this tool reports to its caller.
+
+The choice follows from who is reading. A tool that opens a session
+for a person to attach to is right to keep the pane warm with a
+shell and a "press enter to close". A tool whose output is consumed
+by a program is better off with a field that holds a number. Both
+are defensible; they are not the same job.
