@@ -203,8 +203,9 @@ test, and no source establishes it.
 **Ready.** A line that is exactly `❯` once whitespace is stripped
 (`tested`; Claude Code writes `❯ ` with a trailing space). The
 same line stays visible while an answer streams, so `busy` wins
-over `ready` and a second capture covers the case where no marker
-matches at all. After a finished turn the pane looks like this
+over `ready`. That is also why the second capture is taken for a
+`ready` screen and not only for an unrecognised one: without it a
+harness that is working would be reported as waiting for input. After a finished turn the pane looks like this
 (`tested` 2026-09-23, model `haiku`):
 
 ```text

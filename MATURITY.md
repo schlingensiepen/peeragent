@@ -291,9 +291,11 @@ the alternative. It happens before anything is copied.
 - A screen is a snapshot. While a harness streams its answer, the
   state cannot always be told from one capture, which is why
   peeragent captures twice before it calls a screen unclassified.
-- **`busy` and `unknown` can differ between the two programs.** For
-  a screen that matches no marker, the rule is to capture again after
-  two seconds and report `busy` if the two captures differ. When the
+- **`busy` and `unknown` can differ between the two programs.**
+  Whenever the first capture did not match a trust, authentication or
+  provider question - so for a ready, busy or unrecognised screen
+  alike - the rule is to capture again after two seconds and report
+  `busy` if the two differ. When the
   screen carries something that changes, such as a spinner, the
   outcome depends on where the second capture falls, and on
   2026-09-29 one program reported `unknown` and the other `busy` for
