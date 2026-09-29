@@ -263,7 +263,11 @@ class Emitter:
         # A fatal during argument parsing happens before the log is open.
         # Opening it here is what keeps the failing run in the log at all,
         # and it is the run most worth reading afterwards.
-        if self._log_file is None and "--no-log" not in sys.argv:
+        if "--no-log" in sys.argv:
+            # Nothing was written, so the hint says how to get a log next
+            # time rather than pointing at a file that does not exist.
+            hint = f"{hint}; re-run without --no-log to capture a log file"
+        elif self._log_file is None:
             self.open_log(default_log_path("invalid"))
         self.emit({"type": "fatal", "msg": msg, "hint": hint, "user_relevant": True})
         self.exit_code = code
@@ -977,6 +981,9 @@ def capture_pane(name: str, dead: bool) -> list[str]:
     return lines
 
 
+_PASTE_LEFTOVERS: dict = {"buffer": None, "tmp": None}
+
+
 def paste_prompt(name: str, prompt_text: str) -> tuple[bool, str]:
     """Trailing line breaks are stripped before loading the buffer; Enter is
     always sent afterwards. Bracketed paste (-p) keeps tmux from turning
@@ -989,6 +996,10 @@ def paste_prompt(name: str, prompt_text: str) -> tuple[bool, str]:
         tmpdir = "/tmp"
     buf_name = f"peeragent-{os.getpid()}"
     fd, tmp_path = tempfile.mkstemp(dir=tmpdir, prefix="peeragent-prompt-")
+    # Remembered for the signal handler: it exits without unwinding, so
+    # the finally below never runs when a signal arrives mid-paste.
+    _PASTE_LEFTOVERS["buffer"] = buf_name
+    _PASTE_LEFTOVERS["tmp"] = tmp_path
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(content)
@@ -1003,6 +1014,8 @@ def paste_prompt(name: str, prompt_text: str) -> tuple[bool, str]:
         run_tmux(["delete-buffer", "-b", buf_name])
         return True, ""
     finally:
+        _PASTE_LEFTOVERS["buffer"] = None
+        _PASTE_LEFTOVERS["tmp"] = None
         try:
             os.remove(tmp_path)
         except OSError:
@@ -1381,6 +1394,15 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
                     f"'={session}:' {handler.trust_answer}"
                 )
                 emitter.warn(f"harness {handler.key} is awaiting trust-prompt confirmation", warn_hint)
+            elif awaiting == "trust_prompt":
+                # A trust marker without a key sequence: the state is
+                # known, the answer is not. Saying so beats reporting an
+                # unrecognised screen, which would be untrue.
+                emitter.warn(
+                    f"harness {handler.key} is awaiting trust-prompt confirmation",
+                    "no key sequence is recorded for this harness; look at the "
+                    f"pane and answer it yourself: tmux attach -r -t '={session}'",
+                )
             elif awaiting == "auth_prompt":
                 emitter.warn(
                     f"harness {handler.key} is awaiting authentication",
@@ -1849,6 +1871,11 @@ def parse_argv(argv: list[str], emitter: Emitter) -> tuple[str, Namespace]:
 
 
 def _parse_int(emitter: Emitter, flag: str, value: str, low: int, high: int) -> int:
+    # Plain decimal digits only. int() would also take a leading sign,
+    # surrounding whitespace and digits from other scripts, and then the
+    # two programs would accept different arguments.
+    if not re.fullmatch(r"[0-9]+", value):
+        emitter.fatal(f"invalid value for {flag}: {value}", f"pass an integer between {low} and {high}", 2)
     try:
         parsed = int(value)
     except ValueError:
@@ -1909,8 +1936,33 @@ def build_env() -> dict:
     }
 
 
+def cleanup_paste_leftovers() -> None:
+    """Remove what a paste in flight would otherwise leave behind.
+
+    The signal handler exits with os._exit, which runs no finally
+    blocks, so a scratch file and a tmux paste buffer would survive an
+    interrupted run. Errors here are ignored on purpose: this is the
+    last thing that happens before the process ends.
+    """
+    buf = _PASTE_LEFTOVERS.get("buffer")
+    tmp = _PASTE_LEFTOVERS.get("tmp")
+    if buf:
+        try:
+            run_tmux(["delete-buffer", "-b", buf])
+        except Exception:
+            pass
+    if tmp:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+
 def install_signal_handlers(emitter: Emitter) -> None:
     def handler(signum, _frame):
+        # Whatever a paste in flight left behind goes first: the frame is
+        # closed right after, and os._exit runs no finally blocks.
+        cleanup_paste_leftovers()
         emitter.close()
         os._exit(128 + signum)
 
@@ -1938,6 +1990,11 @@ def main() -> int:
     action, ns = parse_argv(argv, emitter)
     emitter.verbose = ns.verbose
     emitter.color = (not ns.no_color and os.environ.get("NO_COLOR", "") == "" and sys.stdout.isatty())
+
+    # An empty value counts as a flag that was not given. Otherwise one
+    # program reports an empty model string where the other reports none.
+    if getattr(ns, "model", None) == "":
+        ns.model = None
 
     log_token = ACTION_TO_LOG_TOKEN[action]
     if ns.no_log:

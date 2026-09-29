@@ -427,14 +427,14 @@ log_open() {
     stamp=$(date -u +%Y-%m-%d_%H%M%S 2>/dev/null) || stamp="unknown"
     path="$dir/${stamp}_${LOG_ACTION}_$$.jsonl"
   fi
-  if ! (: >>"$path") 2>/dev/null; then
+  if ! (: >"$path") 2>/dev/null; then
     LOG_ENABLED=0
     LOG_BUFFER=()
     emit warn msg=s:"could not open the log file: $path" user_relevant=b:true \
       hint=s:"create the directory or pass --log-file with a writable path; the run continues without a log"
     return 0
   fi
-  exec 9>>"$path"
+  exec 9>"$path"
   LOG_OPEN=1
   LOG_COUNT=0
   printf '[\n' >&9
@@ -583,7 +583,7 @@ finish() {
 
 on_exit() {
   local rc=$?
-  [[ $$ == "$PEERAGENT_PID" ]] || return 0
+  [[ $BASHPID == "$PEERAGENT_PID" ]] || return 0
   finish
   return "$rc"
 }
@@ -592,7 +592,7 @@ on_exit() {
 # never sees a truncated array. A running session is left alone.
 on_signal() {
   local n=$1
-  [[ $$ == "$PEERAGENT_PID" ]] || exit $((128 + n))
+  [[ $BASHPID == "$PEERAGENT_PID" ]] || exit $((128 + n))
   trap - INT TERM HUP
   finish
   exit $((128 + n))
@@ -1545,7 +1545,14 @@ build_launch_argv() {
   fi
   if [[ $H_PROMPT_DELIVERY == argv && -n $prompt_file ]]; then
     mapfile -d '' -t prefix < <("h_${key}_prompt_prefix_argv")
-    LAUNCH_ARGV=(bash -c 'pf=$1; shift; exec "$@" "$(cat "$pf")"' _ "$prompt_file"
+    # Command substitution drops trailing line feeds by itself; the loop
+    # takes carriage returns off as well, so a CRLF file does not put a
+    # stray CR on the harness command line.
+    LAUNCH_ARGV=(bash -c 'pf=$1; shift; p=$(cat "$pf")
+      while [ "${p%$'"'"'\r'"'"'}" != "$p" ] || [ "${p%$'"'"'\n'"'"'}" != "$p" ]; do
+        p=${p%$'"'"'\r'"'"'}; p=${p%$'"'"'\n'"'"'}
+      done
+      exec "$@" "$p"' _ "$prompt_file"
       ${launch[@]+"${launch[@]}"} ${marg[@]+"${marg[@]}"} ${prefix[@]+"${prefix[@]}"})
   else
     LAUNCH_ARGV=(${launch[@]+"${launch[@]}"} ${marg[@]+"${marg[@]}"})
@@ -1562,6 +1569,13 @@ paste_prompt() {
   ensure_tmpd || return 1
   copy="$TMPD/prompt.txt"
   content=$(<"$pf")
+  # Command substitution strips trailing line feeds, not carriage
+  # returns. A CRLF file would otherwise send a literal CR into the
+  # harness under bracketed paste.
+  while [[ $content == *$'\r' || $content == *$'\n' ]]; do
+    content=${content%$'\r'}
+    content=${content%$'\n'}
+  done
   printf '%s' "$content" >"$copy" || return 1
   PASTE_BUFFER="peeragent-$$"
   tmux_run load-buffer -b "$PASTE_BUFFER" "$copy"
