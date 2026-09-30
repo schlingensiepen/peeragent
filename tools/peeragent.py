@@ -970,12 +970,19 @@ def pane_pid_of(name: str) -> Optional[int]:
     return int(lines[0].strip())
 
 
-def capture_pane(name: str) -> list[str]:
-    """The visible pane at the fixed size. There is no scrollback branch:
-    a session only exists while its harness does, so a capture always
-    finds a live pane or nothing at all."""
+def capture_pane(name: str) -> Optional[list[str]]:
+    """The visible pane at the fixed size, or None if there is no pane.
+
+    None and an empty list mean different things and must not be
+    confused: a session exists only while its harness does, so a failed
+    capture says the harness is gone, while an empty capture says it is
+    there and showing nothing. Reading the first as the second would
+    report a vanished harness as one that is busy.
+    """
     cp = run_tmux(["capture-pane", "-t", f"={name}:", "-p"])
-    text = decode(cp.stdout) if cp is not None else ""
+    if cp is None or cp.returncode != 0:
+        return None
+    text = decode(cp.stdout)
     lines = [line.rstrip() for line in text.split("\n")]
     while lines and lines[-1] == "":
         lines.pop()
@@ -1374,12 +1381,17 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
             emitter.close()
             return 4
         lines = capture_pane(session)
+        if lines is None:
+            lines = []
 
         awaiting = handler.detect_prompt_type("\n".join(lines))
         if awaiting not in ("trust_prompt", "auth_prompt", "provider_prompt"):
             time.sleep(2)
             lines2 = capture_pane(session)
-            if lines2 != lines:
+            # A capture that fails means the harness went in the meantime.
+            # The first screen is then all there is to report, and it is
+            # honest: it is what the pane held while it existed.
+            if lines2 is not None and lines2 != lines:
                 awaiting = "busy"
                 lines = lines2
 
@@ -1433,11 +1445,13 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
                 with Stopwatch(emitter, "paste-wait"):
                     time.sleep(2)
                 lines = capture_pane(session)
-                awaiting = handler.detect_prompt_type("\n".join(lines))
-                emitter.emit({
-                    "type": "agent.pane", "session": session, "awaiting": awaiting,
-                    "lines": lines, "user_relevant": False,
-                })
+                if lines is not None:
+                    awaiting = handler.detect_prompt_type("\n".join(lines))
+                    emitter.emit({
+                        "type": "agent.pane", "session": session,
+                        "awaiting": awaiting, "lines": lines,
+                        "user_relevant": False,
+                    })
                 prompt_delivered = True
             else:
                 emitter.error(f"could not deliver the prompt to {session}: {err.strip()}",
@@ -1515,7 +1529,7 @@ def cmd_send(emitter: Emitter, ns) -> int:
             2,
         )
 
-    lines = capture_pane(session)
+    lines = capture_pane(session) or []
     awaiting = "unknown"
     if match and HANDLERS.get(match.group(2)):
         awaiting = HANDLERS[match.group(2)].detect_prompt_type("\n".join(lines))
@@ -1535,13 +1549,14 @@ def cmd_send(emitter: Emitter, ns) -> int:
     })
     time.sleep(ns.wait)
     lines2 = capture_pane(session)
-    awaiting2 = "unknown"
-    if match and HANDLERS.get(match.group(2)):
-        awaiting2 = HANDLERS[match.group(2)].detect_prompt_type("\n".join(lines2))
-    emitter.emit({
-        "type": "agent.pane", "session": session, "awaiting": awaiting2,
-        "lines": lines2, "user_relevant": False,
-    })
+    if lines2 is not None:
+        awaiting2 = "unknown"
+        if match and HANDLERS.get(match.group(2)):
+            awaiting2 = HANDLERS[match.group(2)].detect_prompt_type("\n".join(lines2))
+        emitter.emit({
+            "type": "agent.pane", "session": session, "awaiting": awaiting2,
+            "lines": lines2, "user_relevant": False,
+        })
     return 0
 
 

@@ -1414,15 +1414,6 @@ create_session() {
 }
 SESSION=""
 
-# Kept for the one caller that still names it; it no longer removes
-# anything, because there is no longer a window in which the session holds
-# no harness.
-session_setup_failed() {
-  local what=$1 err=$RUN_ERR
-  fatal 1 "could not prepare the tmux session ($what)" \
-    "tmux reported: ${err:-no error output}; the session was removed again, no harness was started"
-}
-
 # The pid of the pane's process, or a failure if the session is gone. A
 # session lives exactly as long as the harness in it, so this answers
 # "did it survive the boot wait" as well.

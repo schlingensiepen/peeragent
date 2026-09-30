@@ -38,7 +38,15 @@ for the person who attaches; a failure there is not worth stopping
 for, because the harness is running, which is what was asked.
 
 Nothing is killed, nothing is replaced, no option is set on the
-pane. **peeragent ends no session under any circumstances.**
+pane. **peeragent ends no session and no harness, under any
+circumstances.**
+
+One qualification, so the claim is exact: the deadlines on peeragent's
+own short-lived probes - a version query, a multiplexer call, reading
+the process list - do end those probes when they hang, which is what a
+deadline is for. The launched harness is not among them. It is a child
+of the multiplexer's own server, not of peeragent, and peeragent has
+no handle on it.
 
 A start that fails is reported by its absence: no session, so
 `agent.exited` with no status and no lines, and exit code 4. The
@@ -47,9 +55,10 @@ running the same harness by hand.
 
 ## Consequences
 
-- The tool contains no kill of any kind. That is worth stating
-  because it is the first question a careful reader asks of
-  something that starts processes for a living.
+- The tool never ends a session or a harness. That is worth stating
+  because it is the first question a careful reader asks of something
+  that starts processes for a living - and the answer used to have an
+  exception.
 - A failed start is thinner to diagnose. The exit code still
   separates it from every other failure, so a caller that branches
   on the exit code is unaffected; a caller that wanted the harness's

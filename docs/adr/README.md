@@ -23,7 +23,7 @@ what is tested is recorded in [../../MATURITY.md](../../MATURITY.md).
 | [0010](0010-generic-prompt-wrapper.md) | One generic prompt wrapper | Accepted |
 | [0011](0011-race-free-tmux-start.md) | Race-free tmux start | Superseded by 0017 |
 | [0012](0012-send-subcommand.md) | A send subcommand instead of answering trust prompts | Accepted |
-| [0013](0013-agent-exited-and-exit-code-4.md) | agent.exited and exit code 4 | Accepted |
+| [0013](0013-agent-exited-and-exit-code-4.md) | agent.exited and exit code 4 | Accepted; message thinned by 0017 |
 | [0014](0014-trust-answers-and-marker-precedence.md) | Trust answers are key sequences, busy before ready | Accepted |
 | [0015](0015-local-git-only.md) | Git setup limited to a local repository | Accepted |
 | [0016](0016-enforce-pointer-prompt.md) | The tool enforces the pointer prompt | Accepted |

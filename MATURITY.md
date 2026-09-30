@@ -10,10 +10,10 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  48 cases and compares them with each other. All 48 agree
+  50 cases and compares them with each other. All 50 agree
   (2026-09-29). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
-  passes. One case starts a fake harness in tmux; no case calls
+  passes. Four cases start a fake harness in tmux, one of them a harness that exits at once; no case calls
   `send`, and no case uses a real harness. The log files are compared
   for every case, by the sequence of message types they hold.
   A workflow under `.github/workflows/` runs that same comparison on a

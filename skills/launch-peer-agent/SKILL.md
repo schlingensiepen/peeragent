@@ -389,9 +389,9 @@ depend on any of our assumptions.
 
 ## If you ever clean up a session
 
-peeragent never ends a session that has a harness in it. The one
-exception is its own: if preparing a session fails before the harness
-is launched, it removes that one session again, by its full name.
+peeragent never ends a session, under any circumstances. It holds no
+session without a harness in it, so there is nothing it would have to
+clean up. A session that is gone went because its harness did.
 
 Hold yourself to the same rule. Kill a session with its full name and
 the exact-match form:

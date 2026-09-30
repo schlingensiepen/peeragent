@@ -8,10 +8,11 @@ the longer explanations live in [cli.md](cli.md),
 [harnesses.md](harnesses.md). What is implemented and what is
 tested is recorded in [MATURITY.md](../MATURITY.md).
 
-- **agent.exited** — the message peeragent emits when the launched
-  harness is no longer alive after the boot wait. It carries the
-  exit status, the last lines of pane output and a hint; the tmux
-  session is left standing so the output can be inspected.
+- **agent.exited** — the message peeragent emits when the tmux
+  session is gone after the boot wait, which means the launched
+  harness did not survive it. It carries no exit status and no pane
+  content, because both went with the session; the hint says to run
+  the harness by hand to see its own error.
 - **agent.prompt_deferred** — the message peeragent emits when a
   launch prompt exists but was not delivered. It names the
   delivery kind and gives the hint that leads to the follow-up
@@ -124,7 +125,7 @@ tested is recorded in [MATURITY.md](../MATURITY.md).
 - **task file** — the file in the working directory that holds the
   full assignment and that the pointer prompt names.
 - **tmux runtime** — the part of peeragent that owns the tmux
-  session: naming, race-free creation, the target forms for
+  session: naming, creation, the target forms for
   session and pane commands, prompt delivery by paste buffer, pane
   capture and the post-boot diagnosis.
 - **trust, auth and provider prompts** — the interactive questions
