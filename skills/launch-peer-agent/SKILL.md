@@ -199,7 +199,8 @@ the prompt as a command-line argument, the assignment text does
 not end up in the process list where other users of the host can
 read it.
 
-peeragent enforces none of this. The prompt file is just a file
+peeragent enforces the length and nothing else: the shape of the
+pointer is yours to get right. The prompt file is just a file
 with the launch prompt. Keeping the convention is your job. A
 one-line instruction may of course stay in the prompt file
 itself.

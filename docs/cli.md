@@ -375,8 +375,10 @@ session standing.
 
 **Prompt files**
 
-peeragent reads the prompt file to count its effective length and
-to remove trailing newlines before a paste.
+peeragent reads the prompt file to count its effective length and to
+remove trailing line breaks. Both delivery paths remove them: on a
+paste a trailing break would submit the prompt before it is complete,
+and on a command line a shell cannot preserve one anyway.
 There is no templating and no preprocessing.
 A prompt that is passed on the command line is visible in the
 process list of the host, so a prompt with confidential content

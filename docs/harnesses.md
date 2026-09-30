@@ -420,8 +420,8 @@ agy --version
 ```
 
 The output is a bare version number with no prefix; the format is
-`observed on a test host`, and the string seen on 2026-09-23 was
-`1.2.8` (`tested`). Antigravity releases often and updates itself
+`observed on a test host`. The string seen on 2026-09-23 was `1.2.8`,
+and on 2026-09-29 `1.2.12` (`tested` both times). Antigravity releases often and updates itself
 in the background, which is visible in the pane's process line as
 `--bg-updater`.
 

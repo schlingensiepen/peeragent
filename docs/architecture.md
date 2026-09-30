@@ -182,9 +182,9 @@ catches it with the double capture described under the runtime.
 ### Where the core calls them
 
 - Preflight of `start agent`: `detect` decides whether the
-  harness is installed; `resume_support` decides `--resume`;
-  `prompt_delivery` sets the size limit for the prompt file,
-  because an argv prompt has to fit on a command line.
+  harness is installed; `resume_support` decides `--resume`. The
+  length limit on the prompt file is the same for both delivery
+  paths, so `prompt_delivery` has no say in it.
 - Building the argv: `launch_argv`, then `model_argv` when
   `--model` was given, then, for `argv` delivery,
   `prompt_prefix_argv` and the prompt text.
@@ -348,9 +348,12 @@ for that reason.
 The comparison then checks that both message lists have the same
 length and that each position is equal as a parsed object, that
 the exit codes match, and that the logs parse with the same type
-sequence. For each subcommand there is additionally a plain-text
-case, compared by line count and by the first word of each line
-after the same normalization. A difference is reported as a diff.
+sequence. There are plain-text cases for the subcommands that need
+no pane - the listings, `duplicate`, `version` - and for a call
+without a subcommand and for `--help`; `start agent` and `send` are
+compared in JSON only. A plain-text case is compared by line count
+and by the first word of each line after the same normalization. A
+difference is reported as a diff.
 
 There are no unit tests. The parts that would be easier to check
 directly than through the command line - the escaping, path
@@ -415,8 +418,13 @@ in it, so there is nothing it would have to clean up.
 ### Delivering the launch prompt
 
 For `argv` delivery the prompt text is always the last element of
-the argv, and the core builds exactly one generic wrapper around
-the harness call:
+the argv, with trailing line breaks removed. How it gets there
+differs between the two programs, and the difference is visible in
+the process tree though not in the harness's input: the Python
+program appends the text directly, while the Bash program wraps the
+call in a shell that reads the file, because a shell cannot hold an
+argument of arbitrary length in a variable as safely. The wrapper
+looks like this:
 
 ```text
 bash -c 'pf=$1; shift; exec "$@" "$(cat "$pf")"' _ <prompt-file> <launch_argv> <model_argv> <prompt_prefix_argv>

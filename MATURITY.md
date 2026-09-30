@@ -84,8 +84,8 @@ you is worth most.
 |---|---|---|---|
 | `peeragent list harness` | implemented in both | yes: all installed, none installed, plain text, version query timing out, version query failing | `observed` 2026-09-29 against the five installed harnesses |
 | `peeragent list models` | implemented in both | yes: all, one, not installed, unknown key, plain text | `observed` 2026-09-29 for one harness |
-| `peeragent start agent` | implemented in both | only the refusals before anything starts: unknown harness, missing tool, missing or conflicting folder, missing, empty or too long prompt, bad flags, and one case that gets past preflight and starts a fake harness | `tested` 2026-09-29: all five harnesses, both programs, up to the first classified screen. With `agy` the run continued through the trust answer and a prompt delivered afterwards |
-| `peeragent send` | implemented in both | no case | `tested` 2026-09-29 with `agy` only |
+| `peeragent start agent` | implemented in both | only the refusals before anything starts: unknown harness, missing tool, missing or conflicting folder, missing, empty or too long prompt, bad flags, and one case that gets past preflight and starts a fake harness | `tested` 2026-09-30: all five harnesses, both programs, up to the first classified screen, and a failed start against a stand-in that exits at once. With `agy` the run continued through the trust answer and a prompt delivered afterwards |
+| `peeragent send` | implemented in both | no case | `tested` 2026-09-29 with `agy` only, Python program; the Bash program was taken through the same path without a recorded transcript (`observed`) |
 | `peeragent duplicate` | implemented in both; `claude` only | yes: a copy with a fake `claude` history, a source without a history, the refusals for `codex` and `copilot`, and the path and destination checks | not run through the program against a real session history: `unverified`. The behaviour it relies on was tested by hand on 2026-09-16 |
 | `peeragent version` | implemented in both | yes: plain text and JSON | `observed` 2026-09-29 |
 | `peeragent list git-templates` | reserved for a later version; exits with code 2 in both | no case | `observed` 2026-09-29 |
@@ -110,7 +110,7 @@ table.
 |---|---|---|---|---|---|
 | `claude` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-23 | `--continue`, `tested` 2026-09-23 | supported, `tested` 2026-09-16 |
 | `codex` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-23 | `resume --last`, `documented` | refused; store `observed` |
-| `agy` | `tested` 2026-09-29 | `tested` 2026-09-29 | `send_keys`, `tested` 2026-09-29 | `--continue`, `documented` | refused; store `unverified` |
+| `agy` | `tested` 2026-09-29 | `tested` 2026-09-29 | `send_keys`, paste mechanism `tested` 2026-09-29 via `send`; delivery by `start agent` itself not run | `--continue`, `documented` | refused; store `unverified` |
 | `opencode` | `tested` 2026-09-29 | `tested` 2026-09-29 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `observed` |
 | `copilot` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-28 | `--continue`, `documented` | refused; store `observed` |
 
