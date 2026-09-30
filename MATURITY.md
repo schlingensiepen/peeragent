@@ -312,9 +312,10 @@ the alternative. It happens before anything is copied.
 
 ## Planned
 
-- Conformance cases that start a harness in tmux and call `send`,
-  compare the log files, and cover the counting rule for the prompt
-  limit; unit tests for the classification of screens.
+- Conformance cases that call `send`, and unit tests for the
+  classification of screens. Cases that start a harness in tmux, that
+  compare the log files and that cover the counting rule for the
+  prompt limit exist since 2026-09-30.
 - Input-prompt markers for `codex` and `opencode`, which need a host
   with a login and a configured provider, and a busy marker for
   `agy`.
@@ -330,6 +331,10 @@ the alternative. It happens before anything is copied.
 - An option for peeragent to answer trust questions under an
   explicit policy, and a command that captures a pane without
   pasting anything.
+- A second skill for the file-based exchange described under the back
+  channel, to be shipped from its own repository. It does not exist
+  yet, which is why nothing here links to it: a link to something
+  that was never published is worse than no link.
 
 No dates. Each item moves out of this section when it has evidence,
 not when it has code.
