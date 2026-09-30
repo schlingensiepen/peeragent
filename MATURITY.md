@@ -96,10 +96,10 @@ one `agy` path, nothing more.
 
 Not exercised by either kind of check against a real harness:
 `--resume`, `--model`, `--git-repo` on a directory that has no
-repository yet, `--log-file`, and the exit code 4 path with a harness
-that dies. The last one, and exit code 130 after Ctrl-C during the
-boot wait, were seen once with a stand-in program that exits at once
-or blocks (`observed` 2026-09-29, both programs).
+repository yet, and `--log-file`. The exit code 4 path is covered by a
+conformance case with a stand-in that exits at once (`tested`
+2026-09-30, both programs); exit code 130 after Ctrl-C during the boot
+wait was seen once by hand (`observed` 2026-09-29).
 
 The harness behaviour these commands are built on is in the next
 table.

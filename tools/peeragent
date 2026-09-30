@@ -40,7 +40,6 @@ readonly TIMEOUT_GIT_INIT=30
 readonly PANE_WIDTH=200
 readonly PANE_HEIGHT=50
 readonly PROMPT_LIMIT=120
-readonly DEAD_PANE_LINES=50
 readonly SESSION_SLUG_MAX=32
 readonly SESSION_ATTEMPTS=5
 readonly BOOT_WAIT_DEFAULT=5
@@ -128,8 +127,7 @@ DET_VERSION=""
 DET_RC=0
 PEFF_LEN=0
 PROMPT_BYTES=0
-PANE_DEAD=0
-PANE_STATUS=""
+
 PANE_PID=""
 declare -a CAP_LINES=()
 CAP_TEXT=""
@@ -1369,10 +1367,16 @@ session_slug() {
   SLUG=$base
 }
 
-# The session is created with the default shell, gets remain-on-exit, and
-# only then is the harness started into the pane with respawn-pane -k. A
-# harness that dies at once therefore leaves its output and its exit
-# status behind instead of taking the pane with it.
+# One call creates the session with the harness already in it. Mouse mode
+# follows, for the person who attaches; it is not worth failing over.
+#
+# Nothing is killed and nothing is replaced. An earlier version created the
+# session empty, set the option that keeps a pane after its process exits,
+# and then replaced the placeholder shell with the harness, so that a
+# harness dying at once left a readable pane. That bought the reason for a
+# failed start at the price of three more calls and killing a shell.
+# Detecting the failure never needed it: if the harness dies the session is
+# gone, and asking whether it exists says so.
 create_session() {
   local folder=$1 key=$2
   shift 2
@@ -1383,7 +1387,8 @@ create_session() {
   for ((attempt = 1; attempt <= SESSION_ATTEMPTS; attempt++)); do
     rand_hex8
     sess="peeragent-$slug-$key-$HEX8"
-    tmux_run new-session -d -s "$sess" -c "$folder" -x "$PANE_WIDTH" -y "$PANE_HEIGHT"
+    tmux_run new-session -d -s "$sess" -c "$folder" \
+      -x "$PANE_WIDTH" -y "$PANE_HEIGHT" "${argv[@]}"
     if ((RUN_RC == 0)); then
       created=1
       break
@@ -1402,54 +1407,44 @@ create_session() {
 
   # set-option resolves its target as a pane, so the window part has to be
   # present even for a session option; an exact session name on its own is
-  # rejected by tmux.
+  # rejected by tmux. A failure here is not fatal: the harness is running,
+  # which is what was asked for.
   tmux_run set-option -t "=$sess:" mouse on
-  if ((RUN_RC != 0)); then session_setup_failed "set-option mouse"; fi
-  tmux_run set-option -t "=$sess:" -w remain-on-exit on
-  if ((RUN_RC != 0)); then session_setup_failed "set-option remain-on-exit"; fi
-  tmux_run respawn-pane -k -t "=$sess:" -c "$folder" "${argv[@]}"
-  if ((RUN_RC != 0)); then session_setup_failed "respawn-pane"; fi
   return 0
 }
 SESSION=""
 
-# Removing the session is only safe while no harness runs in it, which is
-# exactly the window between new-session and respawn-pane.
+# Kept for the one caller that still names it; it no longer removes
+# anything, because there is no longer a window in which the session holds
+# no harness.
 session_setup_failed() {
   local what=$1 err=$RUN_ERR
-  tmux_run kill-session -t "=$SESSION"
   fatal 1 "could not prepare the tmux session ($what)" \
     "tmux reported: ${err:-no error output}; the session was removed again, no harness was started"
 }
 
+# The pid of the pane's process, or a failure if the session is gone. A
+# session lives exactly as long as the harness in it, so this answers
+# "did it survive the boot wait" as well.
 pane_state() {
   local sess=$1 line
-  PANE_DEAD=0
-  PANE_STATUS=""
   PANE_PID=""
-  tmux_run list-panes -t "=$sess" -F '#{pane_dead},#{pane_dead_status},#{pane_pid}'
+  tmux_run list-panes -t "=$sess" -F '#{pane_pid}'
   ((RUN_RC == 0)) || return 1
   line=${RUN_OUT%%$'\n'*}
-  PANE_DEAD=${line%%,*}
-  line=${line#*,}
-  PANE_STATUS=${line%%,*}
-  PANE_PID=${line#*,}
-  [[ $PANE_DEAD == 1 ]] || PANE_DEAD=0
+  [[ $line == +([0-9]) ]] || return 1
+  PANE_PID=$line
   return 0
 }
 
-# Visible pane content at the fixed size. A dead pane only shows the
-# tmux placeholder in the visible area, so the scrollback is read too and
-# cut to the last non-empty lines.
+# The visible pane at the fixed size. There is no scrollback branch: a
+# session only exists while its harness does, so a capture always finds a
+# live pane or nothing at all.
 capture_pane() {
-  local sess=$1 dead=$2 l
+  local sess=$1 l
   CAP_LINES=()
   local -a raw=()
-  if [[ $dead == 1 ]]; then
-    tmux_run capture-pane -t "=$sess:" -p -S -
-  else
-    tmux_run capture-pane -t "=$sess:" -p
-  fi
+  tmux_run capture-pane -t "=$sess:" -p
   ((RUN_RC == 0)) || return 1
   mapfile -t raw <"$RUN_OUT_FILE"
   local -a out=()
@@ -1459,20 +1454,9 @@ capture_pane() {
     out+=("$TRIMMED")
   done
   local i n
-  if [[ $dead == 1 ]]; then
-    local -a keep=()
-    for l in ${out[@]+"${out[@]}"}; do
-      [[ -n $l ]] && keep+=("$l")
-    done
-    n=${#keep[@]}
-    local start=0
-    ((n > DEAD_PANE_LINES)) && start=$((n - DEAD_PANE_LINES))
-    for ((i = start; i < n; i++)); do CAP_LINES+=("${keep[i]}"); done
-  else
-    n=${#out[@]}
-    while ((n > 0)) && [[ -z ${out[n-1]} ]]; do ((n--)); done
-    for ((i = 0; i < n; i++)); do CAP_LINES+=("${out[i]}"); done
-  fi
+  n=${#out[@]}
+  while ((n > 0)) && [[ -z ${out[n-1]} ]]; do ((n--)); done
+  for ((i = 0; i < n; i++)); do CAP_LINES+=("${out[i]}"); done
   join_lines
   return 0
 }
@@ -1923,26 +1907,18 @@ cmd_start_agent() {
   now_ms
   t_step=$NOW_MS
   if ! pane_state "$sess"; then
-    fatal 1 "could not read the state of the pane in $sess" \
-      "tmux reported: ${RUN_ERR:-no error output}; look at the session yourself: tmux attach -r -t '=$sess'"
-  fi
-  local pane_pid=$PANE_PID dead=$PANE_DEAD status=$PANE_STATUS
-  capture_pane "$sess" "$dead"
-
-  if [[ $dead == 1 ]]; then
-    EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
-    append_resume_failure_hint "the harness exited during startup; the tmux session was kept: tmux attach -r -t '=$sess'"
-    local -a ef=(agent.exited session=s:"$sess")
-    if [[ $status == +([0-9]) ]]; then
-      ef+=(exit_status=n:"$status")
-    else
-      ef+=(exit_status=z:)
-    fi
-    ef+=(lines=a: hint=s:"$RESUME_HINTED" user_relevant=b:true)
-    emit "${ef[@]}"
+    # The session goes when the harness goes, so there is nothing left to
+    # read: no exit status, no last lines. The caller learns that the
+    # start failed, not why.
+    EMIT_LINES=()
+    append_resume_failure_hint "the harness did not survive the boot wait and the tmux session is gone with it; check the arguments and start again, or run the harness by hand to see its error"
+    emit agent.exited session=s:"$sess" exit_status=z: lines=a: \
+      hint=s:"$RESUME_HINTED" user_relevant=b:true
     timing diagnose "$t_step"
     exit 4
   fi
+  local pane_pid=$PANE_PID
+  capture_pane "$sess"
 
   classify_pane "$H_KEY"
   awaiting=$AWAITING
@@ -1951,7 +1927,7 @@ cmd_start_agent() {
     trust_prompt | auth_prompt | provider_prompt) ;;
     *)
       sleep "$SECOND_CAPTURE_WAIT"
-      if capture_pane "$sess" 0; then
+      if capture_pane "$sess"; then
         second_text=$CAP_TEXT
         if [[ $second_text != "$first_text" ]]; then awaiting="busy"; fi
       fi
@@ -2005,7 +1981,7 @@ cmd_start_agent() {
         now_ms
         t_step=$NOW_MS
         sleep "$POST_PASTE_WAIT"
-        if pane_state "$sess" && capture_pane "$sess" "$PANE_DEAD"; then
+        if pane_state "$sess" && capture_pane "$sess"; then
           classify_pane "$H_KEY"
           EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
           emit agent.pane session=s:"$sess" awaiting=s:"$AWAITING" lines=a:
@@ -2076,16 +2052,14 @@ cmd_send() {
   fi
   pf_prompt_file "$ARG_PROMPT_FILE"
   if ! pane_state "$sess"; then
-    fatal 1 "could not read the state of the pane in $sess" \
-      "tmux reported: ${RUN_ERR:-no error output}; look at the session yourself: tmux attach -r -t '=$sess'"
-  fi
-  if [[ $PANE_DEAD == 1 ]]; then
-    fatal 2 "the harness in $sess is no longer running" \
-      "the pane is dead, a paste would go nowhere; look at it with 'tmux attach -r -t \"=$sess\"' and start a new session"
+    # No session means no harness: it either never started or has since
+    # exited, and either way there is nothing to paste into.
+    fatal 2 "no such session, or the harness in it has exited" \
+      "list what is there with 'tmux ls' and start again if needed: the session was called $sess"
   fi
   timing preflight "$t_start"
 
-  capture_pane "$sess" 0
+  capture_pane "$sess"
   classify_pane "$H_KEY"
   EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
   emit agent.pane session=s:"$sess" awaiting=s:"$AWAITING" lines=a:
@@ -2102,7 +2076,7 @@ cmd_send() {
   now_ms
   t_step=$NOW_MS
   sleep "$ARG_WAIT"
-  if pane_state "$sess" && capture_pane "$sess" "$PANE_DEAD"; then
+  if pane_state "$sess" && capture_pane "$sess"; then
     classify_pane "$H_KEY"
     EMIT_LINES=(${CAP_LINES[@]+"${CAP_LINES[@]}"})
     emit agent.pane session=s:"$sess" awaiting=s:"$AWAITING" lines=a:

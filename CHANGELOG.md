@@ -9,6 +9,20 @@ Semantic Versioning.
 Not released. Both programs are in this repository; what is verified
 and what is not is recorded in [MATURITY.md](MATURITY.md).
 
+### Changed
+
+- A start is one call now. The session is created with the harness
+  already in it, and nothing is killed, replaced or configured on the
+  pane afterwards beyond turning on mouse mode for whoever attaches.
+  **peeragent ends no session under any circumstances.**
+- A start that fails is still reported with its own message and exit
+  code 4, but without an exit status and without pane content: a
+  session exists exactly as long as the harness in it, so by the time
+  the failure is noticed there is nothing left to read. The caller
+  learns that the start failed and finds out why by running the same
+  harness by hand. The earlier behaviour kept that evidence and paid
+  for it with three extra calls and a killed shell in every start.
+
 ### Added
 
 - Two call-compatible programs, one in Python using the standard

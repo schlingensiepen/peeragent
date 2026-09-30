@@ -1,6 +1,6 @@
 # 0011. Race-free tmux start
 
-- Status: Accepted
+- Status: Superseded by [0017](0017-simplest-start.md)
 - Date: 2026-09-17
 
 ## Context

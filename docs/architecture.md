@@ -390,27 +390,27 @@ did not create.
 
 ### Creating the session without a race
 
-The obvious sequence, creating the session with the harness in it,
-loses the evidence when the harness dies within the first
-moments: the session disappears before anything can be read. The
-sequence used instead configures the pane before the harness
-exists:
+One call creates the session with the harness already in it,
+detached, in the target folder, at a fixed pane size of 200 by 50.
+Mouse mode is set afterwards, for the person who attaches; if that
+does not take, nothing is lost, because the harness is running,
+which is what was asked for. Argv is always passed as separate
+arguments, never as one string.
 
-1. Create the session detached, with the default shell, in the
-   target folder, at a fixed pane size of 200 by 50.
-2. Set mouse mode on the session.
-3. Set the window option that keeps a pane after its process
-   exits.
-4. Respawn the pane, replacing the shell with the harness argv.
+A session exists exactly as long as the harness in it. If the
+harness dies, the session goes with it, and asking whether the
+session is there is how peeragent knows. What it does **not** get
+that way is the reason: no exit status, no last lines of output.
+That is a deliberate trade, and it replaced an earlier sequence
+that created the session empty, set an option keeping the pane
+after its process exits, and then replaced the placeholder shell
+with the harness. The earlier way preserved the evidence of a
+failed start and cost three more calls and the killing of a shell
+in a tool that does nothing but launch.
 
-Because the pane is configured before the harness exists, a
-harness that exits immediately leaves its output and its exit
-status in a pane that is still there. Argv is always passed as
-separate arguments, never as one string.
-
-If a step after the successful create fails, peeragent may remove
-the session, because no harness is running yet. After a successful
-respawn it never ends a session; that is the user's decision.
+**peeragent ends no session, under any circumstances.** There is
+no longer a moment in which it holds a session without a harness
+in it, so there is nothing it would have to clean up.
 
 ### Delivering the launch prompt
 
@@ -445,15 +445,16 @@ including on the error path.
 
 ### Post-boot diagnosis
 
-After the configured boot wait, measured from the respawn, the
-runtime asks tmux whether the pane is dead, with which status,
-and under which process id.
+After the configured boot wait, measured from the moment the
+session was created, the runtime asks tmux for the process id of
+the pane.
 
-If the pane is dead, the visible area shows only a tmux notice, so
-the output is read from the scrollback and truncated to the last
-non-empty lines. peeragent reports the exit status and those
-lines, leaves the session standing so the user can look, and ends
-with the exit code reserved for this case.
+No answer means no session, and therefore no harness: it did not
+survive the boot wait. peeragent reports that, with no exit status
+and no lines, because there is nothing left to read, and ends with
+the exit code reserved for this case. The caller learns that the
+start failed and not why; the way to find out is to run the same
+harness by hand.
 
 Otherwise the pane is captured and handed to the handler for
 classification. If the result is not one of the three waiting
@@ -492,7 +493,7 @@ preflight order, all flags and the exact messages per step are in
 
 `start agent` parses, opens the log, runs preflight, optionally
 initializes a local git repository, announces the start, creates
-the session and respawns the harness, waits out the boot wait,
+the session with the harness in it, waits out the boot wait,
 diagnoses the pane, delivers or defers the prompt, and finally
 reports the session with its process tree. A harness that died
 during boot ends the flow early with its own message and exit

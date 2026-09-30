@@ -29,10 +29,12 @@ The result is the `awaiting` field of the pane message.
 | `error` | Reserved; not assigned in this version. A harness that died produces its own exited message and exit code 4 instead. | Nothing. If you do see it, report it. |
 | `unknown` | No pattern matched. | Show the captured lines to the user and ask. This is also what an unrecognised waiting state looks like, for example the usage-limit dialog of the Codex CLI. |
 
-A harness that is no longer alive after the boot wait gets no
-`awaiting` value at all. It produces an exited message with the
-pane's exit status and the last lines from the scrollback, and
-peeragent leaves the tmux session standing so you can attach to it.
+A harness that did not survive the boot wait gets no `awaiting`
+value at all. It produces an exited message, and that message is
+thin on purpose: the session existed only as long as the harness,
+so there is no status and no pane content to report. You learn that
+the start failed. To learn why, run the same harness by hand with
+the same arguments.
 
 ### Precedence
 
@@ -176,7 +178,7 @@ reproduced on a host: `unverified`.
 | A harness reported as missing | 3 | The binary is not on `PATH`. | Install it as described in [`harnesses.md`](harnesses.md). If it is installed under `~/.local/bin`, put that directory on `PATH`. |
 | `git` reported as missing | 3 | Only requested because you asked peeragent to initialise a repository. | Install git, or drop the repository option. |
 | Harness found, version unknown, plus a warning | 0 | The version query timed out or failed although the binary exists. | Run `<binary> --version` by hand. A self-updating launcher may be busy installing; OpenCode installs a package at startup. |
-| The exited message with an exit status | 4 | The harness was no longer alive after the boot wait. | Read the reported lines: they come from the scrollback and usually carry the harness's own error. The session was kept, so attach and look. |
+| The exited message | 4 | The harness did not survive the boot wait, and the session went with it. | There is nothing left to read. Run the same harness by hand in the same folder with the same arguments; its own error message is what peeragent could not keep. |
 | Folder is already a git repository | 2 | You asked for a repository to be initialised in a folder that already has one. | Drop the repository option. |
 | Prompt file missing, unreadable or empty | 2 | The path is wrong, or the file has no content. | Check the path. A prompt file has to exist and hold something; its encoding is not checked. |
 | Prompt too long | 2 | The prompt holds more than 120 effective characters, so it is an assignment and not a pointer. | Write the assignment into a file in the working directory and pass a short prompt that points at it. Paths that start with `/` and hold no spaces do not count towards the length; the counting rule is in [`cli.md`](cli.md). |
@@ -282,7 +284,7 @@ Harness-specific pictures worth knowing:
 ## Looking at the pane yourself
 
 The harness keeps running in tmux after peeragent returns.
-peeragent never ends a session once the harness has started, so
+peeragent never ends a session at all, so
 the pane is yours to inspect.
 
 Watch without being able to type:
@@ -298,17 +300,21 @@ tmux capture-pane -t "=<session>:" -p
 tmux capture-pane -t "=<session>:" -p -S -
 ```
 
-Ask whether the pane is still alive:
+Both only work while the session is there. A harness that exits
+takes its session and its output with it, so capture before you
+start investigating.
+
+Ask whether the session is still there:
 
 ```bash
-tmux list-panes -t "=<session>" -F '#{pane_dead},#{pane_dead_status},#{pane_pid}'
+tmux has-session -t "=<session>" && echo alive || echo gone
 ```
 
-While the pane lives, the middle field is empty. A dead pane
-reports its exit status there, and the visible area then shows only
-a `Pane is dead` line — the harness's own output has scrolled into
-the scrollback, which is why the scrollback form above matters
-(tested 2026-09-23 on tmux 3.5a).
+A session exists exactly as long as the harness in it. If the
+harness exits, the session goes with it and there is nothing left
+to read - no output and no exit status. That is why a failed start
+tells you that it failed and not why: run the same harness by hand
+with the same arguments to see its error.
 
 Answer a trust prompt:
 
@@ -317,8 +323,8 @@ tmux send-keys -t "=<session>:" 1
 ```
 
 Note the target form. Session-level commands take `=<session>`;
-window and pane commands — capture, send-keys, paste-buffer,
-respawn-pane — take `=<session>:` with the trailing colon. Without
+window and pane commands - capture, send-keys, paste-buffer,
+set-option - take `=<session>:` with the trailing colon. Without
 the colon, tmux reads the name as a window name and the command
 fails (tested on tmux 3.5a). The leading `=` forces an exact name
 match.
@@ -401,8 +407,9 @@ trip.
   so say why you think this one is.
 
 If the harness itself misbehaved rather than peeragent, include
-your own pane capture. The scrollback form above is the one that
-shows a dead harness's last words.
+your own pane capture, taken while the session is still there. Once
+the harness exits, the session goes with it and the output is gone,
+so capture before you investigate rather than after.
 
 Redact before posting: absolute paths under your home directory,
 repository and branch names, anything from the pane that names an

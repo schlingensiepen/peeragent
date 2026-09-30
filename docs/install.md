@@ -258,7 +258,8 @@ What is left behind on purpose:
   `rm -rf ~/.local/state/peeragent` when you no longer need them.
   peeragent never rotates or deletes logs by itself.
 - The tmux sessions of harnesses that are still running. peeragent
-  never ends a session it started. List them with `tmux ls` and
+  never ends a session, so they are yours to close. List them with
+  `tmux ls` and
   end the ones you recognize by name; the names begin with
   `peeragent-`.
 

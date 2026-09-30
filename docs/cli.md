@@ -324,11 +324,10 @@ versioned, re-read and referred to; a command line cannot.
 6. peeragent waits `--boot-wait` seconds, measured from the start of
    the harness process.
 7. Diagnosis.
-   If the harness is no longer alive, `agent.exited` reports the
-   exit status and the last lines of the pane scrollback, and the
-   run ends with exit code 4.
-   No `agent.started` follows, and the session is kept for
-   inspection.
+   If the session is gone, the harness did not survive the boot
+   wait: `agent.exited` says so and the run ends with exit code 4.
+   There is no exit status and no pane content to report, because
+   the session went with the harness. No `agent.started` follows.
    Otherwise `agent.pane` reports the session name, the classified
    `awaiting` value and the visible pane lines.
    For `trust_prompt`, `auth_prompt`, `provider_prompt` and
@@ -355,7 +354,9 @@ The harness keeps running in tmux after peeragent returns, on its
  own and with no connection back to the caller. Talking to it later
  needs a mechanism arranged in the assignment; the recommended ways
  are in [../README.md](../README.md).
-peeragent never kills a session once the harness has been started.
+peeragent never ends a session, under any circumstances. It holds no
+session without a harness in it, so there is nothing for it to clean
+up.
 
 **Output**
 
@@ -418,7 +419,8 @@ peeragent send --session <name> --prompt-file <path>
 4. The prompt file is checked as in `start agent` step 7,
    otherwise `fatal` (2). The length limit applies here too:
    without it, `send` would be the way around the pointer rule.
-5. The pane is not dead, otherwise `fatal` (2).
+5. The session is still there, otherwise `fatal` (2): no session
+   means no harness to paste into.
 
 **Handler determination**
 
@@ -448,7 +450,8 @@ The preflight `info` messages, `agent.pane`, `agent.prompt_sent`,
 
 **Exit codes:** 0; 1 when the paste itself fails, because the paste
 is the whole operation of this subcommand; 2 for a missing session,
-a dead pane or a prompt-file problem; 3 for a missing tmux.
+a session whose harness has exited, or a prompt-file problem; 3 for
+a missing tmux.
 
 Call `send` only after an `agent.prompt_deferred`.
 Calling it without that message risks delivering the same prompt

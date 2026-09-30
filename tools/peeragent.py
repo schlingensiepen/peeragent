@@ -906,32 +906,32 @@ def has_session(name: str) -> bool:
 
 
 def create_session(name: str, folder: str, argv: list[str]) -> tuple[bool, str]:
-    """The session is built empty first and only then respawned into the
-    harness (the race-free start): that way a harness
-    that dies immediately still leaves a pane the diagnosis step can read,
-    instead of a session that vanished before anyone looked at it."""
-    cp = run_tmux(["new-session", "-d", "-s", name, "-c", folder, "-x", "200", "-y", "50"])
+    """One call starts the session with the harness in it.
+
+    Mouse mode is turned on afterwards, for the person who attaches. It
+    is not worth failing over: if it does not take, the session is
+    running and that is what was asked for.
+
+    Nothing is killed here, and nothing is replaced. An earlier version
+    created the session empty, set an option that keeps a pane after its
+    process exits, and then replaced the placeholder shell with the
+    harness - so that a harness dying in the first seconds left a
+    readable pane. That bought the reason for a failed start, at the
+    price of three more calls and killing a shell. Detecting the failure
+    never needed it: if the harness dies, the session is gone, and
+    asking whether it exists is enough to say so.
+    """
+    cp = run_tmux([
+        "new-session", "-d", "-s", name, "-c", folder,
+        "-x", "200", "-y", "50", *argv,
+    ])
     if cp is None or cp.returncode != 0:
         stderr = decode(cp.stderr) if cp is not None else "tmux did not respond"
         return False, stderr
     # set-option resolves -t as a pane target even for a session-scoped
-    # option; the exact-match session form without a trailing colon does
-    # not parse the same way here, so every non-session command below
-    # addresses the pane form consistently.
-    cp = run_tmux(["set-option", "-t", f"={name}:", "mouse", "on"])
-    if cp is None or cp.returncode != 0:
-        run_tmux(["kill-session", "-t", f"={name}"])
-        return False, decode(cp.stderr) if cp is not None else "tmux did not respond"
-    cp = run_tmux(["set-option", "-t", f"={name}:", "-w", "remain-on-exit", "on"])
-    if cp is None or cp.returncode != 0:
-        run_tmux(["kill-session", "-t", f"={name}"])
-        return False, decode(cp.stderr) if cp is not None else "tmux did not respond"
-    cp = run_tmux(["respawn-pane", "-k", "-t", f"={name}:", "-c", folder, *argv])
-    if cp is None or cp.returncode != 0:
-        run_tmux(["kill-session", "-t", f"={name}"])
-        return False, decode(cp.stderr) if cp is not None else "tmux did not respond"
+    # option, so the window part has to be there.
+    run_tmux(["set-option", "-t", f"={name}:", "mouse", "on"])
     return True, ""
-
 
 def create_session_with_retry(base_name: str, harness: str, folder: str, argv: list[str],
                                 emitter: Emitter, max_attempts: int = 5) -> str:
@@ -955,32 +955,30 @@ def create_session_with_retry(base_name: str, harness: str, folder: str, argv: l
     )
 
 
-def list_panes_status(name: str) -> Optional[tuple[bool, Optional[int], int]]:
-    cp = run_tmux(["list-panes", "-t", f"={name}", "-F", "#{pane_dead},#{pane_dead_status},#{pane_pid}"])
+def pane_pid_of(name: str) -> Optional[int]:
+    """The pid of the pane's process, or None if the session is gone.
+
+    A session exists exactly as long as the harness in it does, so None
+    is the answer to "did it survive the boot wait" as well.
+    """
+    cp = run_tmux(["list-panes", "-t", f"={name}", "-F", "#{pane_pid}"])
     if cp is None or cp.returncode != 0:
         return None
-    line = decode(cp.stdout).splitlines()[0] if decode(cp.stdout).splitlines() else ""
-    parts = line.split(",")
-    if len(parts) != 3:
+    lines = decode(cp.stdout).splitlines()
+    if not lines or not lines[0].strip().isdigit():
         return None
-    dead = parts[0] == "1"
-    status = int(parts[1]) if parts[1].strip() != "" else None
-    pane_pid = int(parts[2])
-    return dead, status, pane_pid
+    return int(lines[0].strip())
 
 
-def capture_pane(name: str, dead: bool) -> list[str]:
-    args = ["capture-pane", "-t", f"={name}:", "-p"]
-    if dead:
-        args += ["-S", "-"]
-    cp = run_tmux(args)
+def capture_pane(name: str) -> list[str]:
+    """The visible pane at the fixed size. There is no scrollback branch:
+    a session only exists while its harness does, so a capture always
+    finds a live pane or nothing at all."""
+    cp = run_tmux(["capture-pane", "-t", f"={name}:", "-p"])
     text = decode(cp.stdout) if cp is not None else ""
     lines = [line.rstrip() for line in text.split("\n")]
     while lines and lines[-1] == "":
         lines.pop()
-    if dead:
-        non_empty = [line for line in lines if line != ""]
-        lines = non_empty[-50:]
     return lines
 
 
@@ -1359,28 +1357,28 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
         time.sleep(ns.boot_wait)
 
     with Stopwatch(emitter, "diagnose"):
-        status = list_panes_status(session)
-        if status is None:
-            emitter.fatal("could not read back the tmux pane after starting the harness",
-                          "inspect the session yourself: tmux attach -r -t '=" + session + "'", 1)
-        dead, exit_status, pane_pid = status
-        lines = capture_pane(session, dead)
-        if dead:
-            hint = ("the harness exited during startup; the tmux session was "
-                    f"kept: tmux attach -r -t '={session}'")
+        pane_pid = pane_pid_of(session)
+        if pane_pid is None:
+            # The session goes when the harness goes, so there is nothing
+            # left to read: no exit status, no last lines. What the caller
+            # gets is that the start failed, not why.
+            hint = ("the harness did not survive the boot wait and the tmux "
+                    "session is gone with it; check the arguments and start "
+                    "again, or run the harness by hand to see its error")
             if ns.resume and handler.resume_failure_hint:
                 hint += "; " + handler.resume_failure_hint
             emitter.emit({
-                "type": "agent.exited", "session": session, "exit_status": exit_status,
-                "lines": lines, "hint": hint, "user_relevant": True,
+                "type": "agent.exited", "session": session, "exit_status": None,
+                "lines": [], "hint": hint, "user_relevant": True,
             })
             emitter.close()
             return 4
+        lines = capture_pane(session)
 
         awaiting = handler.detect_prompt_type("\n".join(lines))
         if awaiting not in ("trust_prompt", "auth_prompt", "provider_prompt"):
             time.sleep(2)
-            lines2 = capture_pane(session, dead)
+            lines2 = capture_pane(session)
             if lines2 != lines:
                 awaiting = "busy"
                 lines = lines2
@@ -1434,7 +1432,7 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
                 })
                 with Stopwatch(emitter, "paste-wait"):
                     time.sleep(2)
-                lines = capture_pane(session, False)
+                lines = capture_pane(session)
                 awaiting = handler.detect_prompt_type("\n".join(lines))
                 emitter.emit({
                     "type": "agent.pane", "session": session, "awaiting": awaiting,
@@ -1507,18 +1505,17 @@ def cmd_send(emitter: Emitter, ns) -> int:
 
     prompt_content, prompt_bytes = check_prompt_file(emitter, abs_path(ns.prompt_file))
 
-    status = list_panes_status(session)
-    if status is None:
-        emitter.fatal("could not read the tmux pane", "check 'tmux list-panes -t \"=" + session + "\"'", 1)
-    dead, _exit_status, _pane_pid = status
-    if dead:
+    if pane_pid_of(session) is None:
+        # No session means no harness: it either never started or has since
+        # exited, and either way there is nothing to paste into.
         emitter.fatal(
-            "pane is not alive",
-            f"the harness process has exited; inspect it with: tmux attach -r -t '={session}'",
+            "no such session, or the harness in it has exited",
+            f"list what is there with 'tmux ls' and start again if needed: "
+            f"the session was called {session}",
             2,
         )
 
-    lines = capture_pane(session, False)
+    lines = capture_pane(session)
     awaiting = "unknown"
     if match and HANDLERS.get(match.group(2)):
         awaiting = HANDLERS[match.group(2)].detect_prompt_type("\n".join(lines))
@@ -1537,7 +1534,7 @@ def cmd_send(emitter: Emitter, ns) -> int:
         "user_relevant": False,
     })
     time.sleep(ns.wait)
-    lines2 = capture_pane(session, False)
+    lines2 = capture_pane(session)
     awaiting2 = "unknown"
     if match and HANDLERS.get(match.group(2)):
         awaiting2 = HANDLERS[match.group(2)].detect_prompt_type("\n".join(lines2))

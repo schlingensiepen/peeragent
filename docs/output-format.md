@@ -44,7 +44,7 @@ red, nothing else colored.
 | `agent.pane` | `session <session> awaiting <awaiting>`, then the pane lines indented |
 | `agent.prompt_sent` | `prompt sent to <session> (<bytes> bytes)` |
 | `agent.prompt_deferred` | `prompt not delivered to <session> (<delivery>)` and `  hint: <hint>` |
-| `agent.exited` | `harness exited in <session> with status <exit_status>`, then the pane lines indented, then `  hint: <hint>` |
+| `agent.exited` | `harness exited in <session> with status <exit_status>`, rendering `unknown` for the absent status, then `  hint: <hint>` |
 | `agent.started` | `started <session> pane_pid <pane_pid>`, then one line `  <pid> <comm> <args>` per child process, then `  hint: <hint>` |
 | `harness.duplicated` | `duplicated <key> session store: <files> files, <bytes> bytes` |
 | `version` | `peeragent <version>` |
@@ -170,7 +170,7 @@ array.
 | `agent.pane` | after the boot wait, after a paste, and twice in `send` | `session`, `awaiting`, `lines[]` |
 | `agent.prompt_sent` | after a successful paste | `session`, `bytes` (size of the prompt file, measured before trailing newlines are stripped for the paste) |
 | `agent.prompt_deferred` | `start agent`, when the prompt was not delivered | `session`, `prompt_file`, `awaiting`, `delivery` (`argv` or `send_keys`), `hint` |
-| `agent.exited` | `start agent`, when the harness is no longer alive after the boot wait | `session`, `exit_status` (number or `null`), `lines[]`, `hint` |
+| `agent.exited` | `start agent`, when the session is gone after the boot wait | `session`, `exit_status` (always `null`), `lines[]` (always empty), `hint` |
 | `agent.started` | `start agent`, as the last message | `session`, `pane_pid`, `child_processes[]` of `{pid, comm, args}`, `hint` |
 | `harness.duplicated` | `duplicate` | `key`, `status` (`ok` or `experimental`), `files`, `bytes`, `session_dir` (path or `null`) |
 | `version` | `version --json` | `version`, `impl` |
@@ -182,11 +182,12 @@ Notes on the fields:
   It is what `send --session` expects.
 - `lines[]` is the visible pane content with trailing blank lines
   and trailing whitespace per line removed, and otherwise unchanged.
-  In `agent.exited` the lines come from the scrollback and are cut
-  to the last 50 non-empty lines, because the output of a harness
-  that died is no longer in the visible area.
-- `exit_status` is `null` when the harness died without reporting a
-  status.
+  In `agent.exited` it is always empty: the session existed only as
+  long as the harness did, so by the time the exit is noticed there
+  is no pane left to capture.
+- `exit_status` in `agent.exited` is always `null`, for the same
+  reason. The field stays in the message because a caller reads it
+  by name, and because a later version may be able to fill it.
 - `child_processes[]` lists the descendants of the pane process down
   to two levels.
   `comm` is truncated by the kernel to 15 characters and does not
@@ -484,7 +485,7 @@ message is not:
 ,
 {"type":"agent.starting","harness":"agy","folder":"/srv/foo","model":null,"resume":false,"prompt_file":null,"user_relevant":false}
 ,
-{"type":"agent.exited","session":"peeragent-foo-agy-c1d2e3f4","exit_status":2,"lines":["error: unknown option '--no-such-flag'"],"hint":"the harness exited during startup; the tmux session was kept: tmux attach -r -t '=peeragent-foo-agy-c1d2e3f4'","user_relevant":true}
+{"type":"agent.exited","session":"peeragent-foo-agy-c1d2e3f4","exit_status":null,"lines":[],"hint":"the harness did not survive the boot wait and the tmux session is gone with it; check the arguments and start again, or run the harness by hand to see its error","user_relevant":true}
 ]
 ```
 
