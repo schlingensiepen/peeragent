@@ -1,0 +1,9 @@
+start
+agent
+--folder
+
+--harness
+claude
+--prompt-file
+@SANDBOX@/p.txt
+--json

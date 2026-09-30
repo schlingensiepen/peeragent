@@ -545,9 +545,22 @@ timing() {
   emit timing step=s:"$step" ms=n:"$((NOW_MS - start))"
 }
 
+# Looks for --no-log in the original argument list rather than in NO_LOG.
+# A fatal during argument parsing happens before the parse loop has reached
+# the flag, and the caller refused the log file for that run too.
+argv_has_no_log() {
+  local a
+  for a in ${INVOCATION_ARGS[@]+"${INVOCATION_ARGS[@]}"}; do
+    [[ $a == "--no-log" ]] && return 0
+  done
+  return 1
+}
+
 fatal() {
   local code=$1 msg=$2 hint=${3-}
-  if ((NO_LOG)); then
+  if argv_has_no_log; then
+    NO_LOG=1
+    LOG_ENABLED=0
     if [[ -n $hint ]]; then
       hint="$hint; re-run without --no-log to capture a log file"
     else
@@ -2221,6 +2234,16 @@ need_value() {
   if [[ -z ${2+x} ]]; then
     fatal 2 "flag $1 needs a value" \
       "pass a value after $1, for example '$1 <value>'; run peeragent --help for the syntax"
+  fi
+  # An empty value is not a value. --model is the one exception: an empty
+  # model means "no model given" and is normalised away, which
+  # docs/cli.md states.
+  # Without this check a path flag reaches realpath -m "", which is the
+  # current directory: duplicate then copies whatever the caller happened
+  # to stand in, and --folder would silently mean "here".
+  if [[ -z $2 && $1 != "--model" ]]; then
+    fatal 2 "flag $1 needs a non-empty value" \
+      "pass a value after $1, for example '$1 <value>'"
   fi
   return 0
 }

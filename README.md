@@ -20,8 +20,10 @@ harness.
 
 peeragent 0.1.0 is a pre-release: both programs are in this
 repository and run. They were started against all five real
-harnesses on 2026-09-29, and the two agree with each other on 45
-conformance cases, which shows equivalence and not correctness. Of
+harnesses on 2026-09-29, and the two agree with each other on every
+conformance case in this repository, which shows equivalence and not
+correctness; [MATURITY.md](MATURITY.md) has the number of cases and
+what they reach. Of
 the five supported harnesses only `claude` has detection, launch,
 prompt delivery, resume and duplicate checked on the harness itself.
 What is tested, what rests on harness documentation and what is

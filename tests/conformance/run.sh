@@ -17,6 +17,11 @@ root=$(cd -- "$here/../.." && pwd)
 py="$root/tools/peeragent.py"
 sh="$root/tools/peeragent"
 fixtures="$here/fixtures"
+# The host's own PATH is the base, so tmux and the standard tools are
+# found wherever this machine keeps them. Hard-coding /usr/bin:/bin made
+# the suite pass on a machine where tmux lives elsewhere, because both
+# programs then failed the same way.
+base_path_global="${PATH:-/usr/bin:/bin}"
 
 missing=0
 for impl in "$py" "$sh"; do
@@ -71,6 +76,64 @@ for impl in "$py" "$sh"; do
   esac
 done
 
+# --- The "bare" PATH ------------------------------------------------
+#
+# The cases that produce a missing harness need a PATH that has the
+# standard tools and none of the five harnesses. Leaving the host PATH
+# in place is not enough: a host that has claude installed then gets a
+# real claude started by a case called start-harness-missing, and both
+# programs agree about it, so the suite stays green while three cases
+# measure the opposite of their names. That happened.
+#
+# So every directory holding one of the harnesses is dropped, and the
+# result is checked below instead of trusted.
+bare_path=""
+for d in $(printf '%s\n' "$base_path_global" | tr ':' '\n'); do
+  [ -n "$d" ] || continue
+  keep=1
+  for h in claude codex agy opencode copilot; do
+    [ -x "$d/$h" ] && keep=0
+  done
+  [ "$keep" -eq 1 ] && bare_path="${bare_path:+$bare_path:}$d"
+done
+
+# The check that makes the profile honest: with this PATH both programs
+# have to report all five harnesses as missing. If they do not, the
+# cases that rely on it are meaningless and the suite says so instead of
+# passing.
+for impl in "$py" "$sh"; do
+  case "$impl" in
+    *.py) out=$(env -i PATH="$bare_path" HOME="$sandbox" LC_ALL=C.UTF-8 \
+                python3 "$impl" list harness --json 2>&1) ;;
+    *)    out=$(env -i PATH="$bare_path" HOME="$sandbox" LC_ALL=C.UTF-8 \
+                bash "$impl" list harness --json 2>&1) ;;
+  esac
+  found=$(printf '%s' "$out" | grep -c '"type":"harness.detected"' || true)
+  missing=$(printf '%s' "$out" | grep -c '"type":"harness.missing"' || true)
+  if [ "$found" -ne 0 ] || [ "$missing" -ne 5 ]; then
+    printf 'the bare PATH still finds a harness, or the run failed:\n' >&2
+    printf '  %s: %s detected, %s missing (5 missing expected)\n' \
+      "$impl" "$found" "$missing" >&2
+    printf '  PATH was: %s\n' "$bare_path" >&2
+    printf 'the cases list-harness-none, list-models-not-installed and\n' >&2
+    printf 'start-harness-missing cannot work like this\n' >&2
+    exit 3
+  fi
+done
+
+# The number of cases, in one place. A case added or removed without
+# this number and the documents that quote it drifting apart is what
+# put three different figures into five documents.
+expected_cases=56
+actual_cases=$(find "$fixtures" -mindepth 1 -maxdepth 1 -type d ! -name bin | wc -l)
+if [ "$actual_cases" -ne "$expected_cases" ] && [ $# -eq 0 ]; then
+  printf 'fixtures/ holds %s cases, this script expects %s\n' \
+    "$actual_cases" "$expected_cases" >&2
+  printf 'update expected_cases here, and the count in\n' >&2
+  printf 'tests/conformance/README.md and MATURITY.md with it\n' >&2
+  exit 3
+fi
+
 pass=0; fail=0; failed=()
 
 cases=("$@")
@@ -103,14 +166,10 @@ for name in "${cases[@]}"; do
   profile=fakes
   [ -f "$dir/path" ] && profile=$(tr -d '[:space:]' < "$dir/path")
 
-  # The host's own PATH is the base, so tmux and the standard tools are
-  # found wherever this machine keeps them. Hard-coding /usr/bin:/bin
-  # made the suite pass on a machine where tmux lives elsewhere, because
-  # both programs then failed the same way.
-  base_path="${PATH:-/usr/bin:/bin}"
+  base_path="$base_path_global"
   case "$profile" in
     fakes)  path="$fixtures/bin:$base_path" ;;
-    bare)   path="$base_path" ;;
+    bare)   path="$bare_path" ;;
     notmux) path="$fixtures/bin:$work/nothing" ;;
     *)      printf 'FAIL %s\n  unknown path profile: %s\n' "$name" "$profile"
             fail=$((fail + 1)); failed+=("$name"); continue ;;
@@ -133,11 +192,24 @@ for name in "${cases[@]}"; do
     [ -f "$dir/setup.sh" ] && SANDBOX="$box" HOME="$home" \
       bash "$dir/setup.sh" >"$box/setup.log" 2>&1
 
-    args=$(sed -e "s|@SANDBOX@|$box|g" -e "s|@HOME@|$home|g" "$dir/args")
-    set -f  # no globbing while the case arguments are split
-    # shellcheck disable=SC2206  # deliberate word splitting of the case args
-    argv=($args)
-    set +f
+    # Two ways to give the arguments. "args" is one line, split on
+    # whitespace, which is short to read and enough for most cases.
+    # "argv" is one argument per line and is not split: it is the only
+    # way to pass an argument that is empty or contains a space, and an
+    # empty line is an empty argument. A case that needs one and uses
+    # "args" instead tests something other than what its name says.
+    argv=()
+    if [ -f "$dir/argv" ]; then
+      while IFS= read -r line; do
+        argv+=("$line")
+      done < <(sed -e "s|@SANDBOX@|$box|g" -e "s|@HOME@|$home|g" "$dir/argv")
+    else
+      args=$(sed -e "s|@SANDBOX@|$box|g" -e "s|@HOME@|$home|g" "$dir/args")
+      set -f  # no globbing while the case arguments are split
+      # shellcheck disable=SC2206  # deliberate word splitting of the case args
+      argv=($args)
+      set +f
+    fi
 
     case "$impl" in
       py) cmd=("python3" "$py") ;;

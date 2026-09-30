@@ -1765,6 +1765,22 @@ def determine_action(subcommand: Optional[str], subaction: Optional[str]) -> Opt
     return None
 
 
+def _require_nonempty(emitter: Emitter, flag: str, value: str) -> str:
+    # An empty value is not a value. --model is the one exception: an empty
+    # model means "no model given" and is normalised away, which
+    # docs/cli.md states.
+    # Without this check a path flag reaches realpath(""), which is the
+    # current directory: duplicate then copies whatever the caller happened
+    # to stand in, and --folder would silently mean "here".
+    if value == "" and flag != "--model":
+        emitter.fatal(
+            f"flag {flag} needs a non-empty value",
+            f"pass a value after {flag}, for example '{flag} <value>'",
+            2,
+        )
+    return value
+
+
 def parse_argv(argv: list[str], emitter: Emitter) -> tuple[str, Namespace]:
     ns = Namespace()
     subcommand = None
@@ -1788,7 +1804,7 @@ def parse_argv(argv: list[str], emitter: Emitter) -> tuple[str, Namespace]:
         elif tok in GLOBAL_FLAGS_ARG:
             if i + 1 >= n:
                 emitter.fatal(f"missing value for {tok}", "provide a value after " + tok, 2)
-            value = argv[i + 1]
+            value = _require_nonempty(emitter, tok, argv[i + 1])
             present_flags.add(tok)
             if tok == "--log-file":
                 ns.log_file = value
@@ -1807,7 +1823,7 @@ def parse_argv(argv: list[str], emitter: Emitter) -> tuple[str, Namespace]:
         elif tok in SUB_FLAGS_ARG:
             if i + 1 >= n:
                 emitter.fatal(f"missing value for {tok}", "provide a value after " + tok, 2)
-            value = argv[i + 1]
+            value = _require_nonempty(emitter, tok, argv[i + 1])
             present_flags.add(tok)
             if tok == "--folder":
                 ns.folder = value

@@ -1,0 +1,9 @@
+start
+agent
+--folder
+@SANDBOX@/w
+--harness
+claude
+--model
+
+--json

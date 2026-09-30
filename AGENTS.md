@@ -22,11 +22,13 @@ On 2026-09-29 both were started against all five real harnesses on a
 test host and reported a first screen; a complete path with a trust
 answer and a prompt handed over afterwards with `send` was run through
 to an answer for `agy` only.
-The two programs agree with each other on 50 conformance cases. That
-shows they behave alike, not that either is correct, and none of those
-cases starts a harness.
-`--resume` and `duplicate` have not been run through the programs
-against a real harness.
+The two programs agree with each other on every conformance case in
+this repository. That shows they behave alike, not that either is
+correct. Seven of the cases start a fake harness in tmux, none a real
+one; [MATURITY.md](MATURITY.md) carries the count.
+`--resume`, `--model` and `duplicate` were run through both programs
+against real harnesses on 2026-09-30. `--resume` for the Codex CLI,
+OpenCode and the Copilot CLI was not reached.
 
 Of the five supported harnesses only `claude` has detection, launch,
 prompt delivery, resume and duplicate checked on the harness itself.

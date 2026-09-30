@@ -71,8 +71,11 @@ directory it belongs to, so it cannot be a static fixture.
 No case calls `send`, and none uses a real harness: the five names
 under `fixtures/bin/` are all one stand-in script.
 
-One case does start a fake harness in tmux, so **the suite needs
-tmux**, and it checks for it before running anything. Each case gets
+Seven of the 56 cases do start a fake harness in tmux, so **the suite
+needs tmux**, and it checks for it before running anything. `run.sh`
+also refuses to run when the number of cases no longer matches the
+number written into it, because that number and the one in
+`MATURITY.md` are what the documents quote. Each case gets
 its own tmux server through `TMUX_TMPDIR`, and takes its sessions
 down by name afterwards, so a run never touches a server it did not
 create.

@@ -10,12 +10,15 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  51 cases and compares them with each other. All 51 agree
-  (2026-09-29). That shows the two behave alike. It does not show that
+  56 cases and compares them with each other. All 56 agree
+  (2026-09-30). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
-  passes. Four cases start a fake harness in tmux, one of them a harness that exits at once; no case calls
-  `send`, and no case uses a real harness. The log files are compared
-  for every case, by the sequence of message types they hold.
+  passes. Seven cases start a fake harness in tmux, one of them a
+  harness that exits at once; no case calls `send`, and no case uses a
+  real harness. The log files are compared for every case, by the
+  sequence of message types they hold. This count and the one in
+  `tests/conformance/README.md` are the only two; `run.sh` refuses to
+  run if the number of cases has drifted away from it.
   A workflow under `.github/workflows/` runs that same comparison on a
   hosted machine, which is what would show it does not depend on one
   person's setup. It has **never run**: this repository is not public
@@ -57,8 +60,10 @@ screen for all five, and through a trust answer, a deferred delivery
 with `send` and a reply for `agy`. Harness behaviour was checked
 directly for `claude` end to end, in part for `codex` and `copilot`,
 and no further than detection, launch and the first question for
-`opencode`. Resume and duplicate have not been run through the
-programs at all.
+`opencode`. `--resume`, `--model` and `duplicate` were taken through
+both programs against real harnesses on 2026-09-30; what that run did
+not reach is `--resume` for the Codex CLI, OpenCode and the Copilot
+CLI.
 
 ## Evidence levels
 
@@ -84,9 +89,9 @@ you is worth most.
 |---|---|---|---|
 | `peeragent list harness` | implemented in both | yes: all installed, none installed, plain text, version query timing out, version query failing | `observed` 2026-09-29 against the five installed harnesses |
 | `peeragent list models` | implemented in both | yes: all, one, not installed, unknown key, plain text | `observed` 2026-09-29 for one harness |
-| `peeragent start agent` | implemented in both | only the refusals before anything starts: unknown harness, missing tool, missing or conflicting folder, missing, empty or too long prompt, bad flags, and one case that gets past preflight and starts a fake harness | `tested` 2026-09-30: all five harnesses, both programs, up to the first classified screen, and a failed start against a stand-in that exits at once. With `agy` the run continued through the trust answer and a prompt delivered afterwards |
+| `peeragent start agent` | implemented in both | only the refusals before anything starts: unknown harness, missing tool, missing or conflicting folder, missing, empty or too long prompt, bad flags, and seven cases that get past preflight and start a fake harness | `tested` 2026-09-30: all five harnesses, both programs, up to the first classified screen, and a failed start against a stand-in that exits at once. With `agy` the run continued through the trust answer and a prompt delivered afterwards |
 | `peeragent send` | implemented in both | no case | `tested` 2026-09-29 with `agy` only, Python program; the Bash program was taken through the same path without a recorded transcript (`observed`) |
-| `peeragent duplicate` | implemented in both; `claude` only | yes: a copy with a fake `claude` history, a source without a history, the refusals for `codex` and `copilot`, and the path and destination checks | not run through the program against a real session history: `unverified`. The behaviour it relies on was tested by hand on 2026-09-16 |
+| `peeragent duplicate` | implemented in both; `claude` only | yes: a copy with a fake `claude` history, a source without a history, the refusals for `codex` and `copilot`, and the path and destination checks | `tested` 2026-09-30: both programs, against a real `claude` session history, with the replay visible in the copy. The behaviour it relies on was first tested by hand on 2026-09-16 |
 | `peeragent version` | implemented in both | yes: plain text and JSON | `observed` 2026-09-29 |
 | `peeragent list git-templates` | reserved for a later version; exits with code 2 in both | no case | `observed` 2026-09-29 |
 
@@ -95,7 +100,11 @@ run of 2026-09-29 covers the first screen of each harness and the
 one `agy` path, nothing more.
 
 Exercised against real harnesses on 2026-09-30, both programs:
-`--model` for Claude Code and the Antigravity CLI, `--resume` for
+`--model` for all five harnesses - accepted by Claude Code, the
+Antigravity CLI and the Codex CLI, passed to OpenCode where a provider
+would be needed to see whether it took effect, and refused by the
+Copilot CLI, which continues with a model of its own choosing (see the
+known limits below) - `--resume` for
 Claude Code with a replayed conversation, `--resume` for the
 Antigravity CLI including the warning it carries, `--git-repo` on a
 folder without a repository and inside one, `--log-file` in its three
@@ -104,11 +113,11 @@ copy, and exit code 130 after an interrupt during the boot wait. Exit
 code 4 is covered by a conformance case with a stand-in that exits at
 once.
 
-Still not exercised against a real harness: `--model` and `--resume`
-for the Codex CLI, OpenCode and the Copilot CLI, which need a quota, a
-provider and a login respectively. The documented fallback of two of
-them to the most recent session anywhere is therefore still
-`unverified`, and it is the riskiest of the remaining gaps.
+Still not exercised against a real harness: `--resume` for the Codex
+CLI, OpenCode and the Copilot CLI, each of which needs a session to
+resume and therefore a login. The documented fallback of two of them
+to the most recent session anywhere is therefore still `unverified`,
+and it is the riskiest of the remaining gaps.
 
 The harness behaviour these commands are built on is in the next
 table.
@@ -343,8 +352,10 @@ the alternative. It happens before anything is copied.
 - Input-prompt markers for `codex` and `opencode`, which need a host
   with a login and a configured provider, and a busy marker for
   `agy`.
-- A run of `--resume`, `--model` and `duplicate` through the programs
-  against real harnesses.
+- A run of `--resume` through the programs against the Codex CLI,
+  OpenCode and the Copilot CLI. `--model` and `duplicate` left this
+  section on 2026-09-30, and `--resume` did for Claude Code and the
+  Antigravity CLI.
 - `duplicate` for `codex` and `copilot`, each of which depends on
   whether their index can be extended without writing SQLite.
 - Git templates, repository discovery and remote creation.

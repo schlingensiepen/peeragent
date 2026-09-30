@@ -1,0 +1,8 @@
+duplicate
+--from
+
+--to
+@SANDBOX@/dst
+--harness
+claude
+--json

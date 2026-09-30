@@ -68,9 +68,12 @@ tests/conformance/run.sh version-json    # only the named cases
 KEEP=1 tests/conformance/run.sh          # keep the sandbox to look at
 ```
 
-It needs `bash`, `python3` and, for the cases that get as far as
-looking for it, `tmux`. Exit code 0 means every case agreed, 1 that
-at least one did not, and 3 that one of the two programs is missing.
+It needs `bash`, `python3` and `tmux`; the runner checks for all
+three before any case runs. Exit code 0 means every case agreed, 1
+that at least one did not, and 3 that the run never got started - a
+missing program or tmux, an unusable sandbox path, a case count that
+no longer matches, a `bare` PATH that still finds a harness, or no
+case to run.
 A failing case prints what differed. With `KEEP=1`, a failing run
 prints the sandbox path at the end; the raw output of each program is
 in it.
@@ -80,9 +83,10 @@ expected output and neither program is the reference. Read what that
 means before you trust a green run: a mistake both programs make in
 the same way passes. A green run is evidence of equivalence, never of
 correctness. Correctness comes from reading the description and from
-running a real harness. Also know what it does not reach today: no case
-starts a harness in tmux, none calls `send`, and the log files are not
-compared.
+running a real harness. Also know what it does not reach today: no
+case calls `send`, and no case uses a real harness. Seven do start a
+fake one in tmux; `tests/conformance/README.md` has the current
+figures, and the log files are compared for every case.
 
 The programs run against fake harnesses from `tests/conformance/fixtures/bin/`
 and never against a real one. The runner gives each program an empty
