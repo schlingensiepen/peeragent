@@ -259,6 +259,12 @@ the alternative. It happens before anything is copied.
   the sequence is wrong. This is why every start ends with the
   session name being passed to the user: attaching to the session
   and looking is the one diagnosis that no update can break.
+- **The companion protocol is not published yet.** The back channel
+  section names two ways; one of them is a separate project that does
+  not exist publicly at the time of writing, because it is being built
+  with this tool and follows afterwards. Its link is in the documents
+  and will not resolve until then. The other way, a folder both sides
+  agree on, needs nothing but a directory.
 - There is no back channel. peeragent reports the first screen and
   returns; the launched harness keeps running in its tmux session.
   Anything the launched harness should report back has to be

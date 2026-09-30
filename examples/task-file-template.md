@@ -67,7 +67,8 @@ that nobody is notified: both sides poll.
 
 **[simple-a2a](https://github.com/schlingensiepen/simple-a2a)** is a
 small agent-to-agent protocol for when file dropping is not enough
-and you want addressed messages between agents.
+and you want addressed messages between agents. It is not published
+yet; until it is, the agreed folder is the option that works.
 
 A socket, a message queue or an issue tracker work too. Whatever you
 pick, it belongs in this file with its address and its credentials,

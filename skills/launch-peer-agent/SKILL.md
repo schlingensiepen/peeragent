@@ -140,7 +140,9 @@ else will tell it. Cover all of these:
      users and hosts.
    - **[simple-a2a](https://github.com/schlingensiepen/simple-a2a),**
      a small agent-to-agent protocol, when file dropping is not
-     enough and you want addressed messages.
+     enough and you want addressed messages. Not published yet, so
+     do not send a user there expecting to find it; the agreed folder
+     is the option that works today.
 
    A socket, a message queue or an issue tracker work as well. What
    does not work is leaving it out and hoping.
