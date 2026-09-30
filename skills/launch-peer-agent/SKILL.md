@@ -229,7 +229,7 @@ message.
 | `auth_prompt` | The harness is not logged in. | Tell the user. The login is external and interactive; peeragent does not automate it. |
 | `provider_prompt` | The harness needs a model provider configured. | Tell the user. For `opencode` this is `/connect` inside the harness. |
 | `unknown` | No known pattern matched. | Show the user the captured lines and ask how to proceed. Send no key sequence: for `codex`, `unknown` is also the update dialog, whose preselected option runs a global package install. |
-| `error` | Reserved, not used in version 0.1.0. | A harness that died reports `agent.exited` instead; tell the user and read the log. |
+| `error` | Reserved, not used in version 0.1.0. | A harness that died reports `agent.exited` instead. There is nothing in the log to read about it: the session went with the harness. Tell the user, and run the same harness by hand if the reason matters. |
 
 ### Answering a trust prompt
 
