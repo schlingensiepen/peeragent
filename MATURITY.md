@@ -221,6 +221,15 @@ the alternative. It happens before anything is copied.
   provider, its first screen has not been observed here, so what it
   shows then is `unverified`. Either way the caller has to handle a
   first screen that is not ready.
+- **A model that a harness refuses can pass unnoticed.** The GitHub
+  Copilot CLI answers an unknown model key with one line in the pane
+  and then runs with its automatic choice instead (`tested`
+  2026-09-30 for three keys from the catalogue in this repository, on
+  one host and one account). Nothing about that reaches the output:
+  the line is not a marker, and the screen classifies as ready or as
+  a trust question like any other. A caller for whom the model
+  matters has to read the pane. Whether those keys are wrong or that
+  account lacks the entitlement is `unverified`.
 - **A harness inherits the environment of the tmux server, not of
   the caller.** peeragent uses the standard tmux server, and a server
   that is already running was started by something else with whatever

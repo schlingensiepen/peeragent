@@ -728,6 +728,26 @@ long forms with hyphens. The list a plan actually offers is
 filtered on the server side, and the model picker inside the
 harness is the authority on what is currently available.
 
+**Three of the keys below were refused on a test host**
+(`tested` 2026-09-30): `claude-opus-5`, `claude-sonnet-4.5` and
+`gpt-5-mini` each produced
+
+```text
+✗ Model "<key>" from --model flag is not available. Using "auto" instead.
+```
+
+and the harness continued with its automatic choice. Whether the
+keys are wrong or that account simply has no entitlement to those
+models, the message does not say - "not available" covers both, so
+this is `unverified` rather than a correction to the list.
+
+What matters for a caller is the shape of the failure: **a refused
+model does not stop anything.** The harness runs, with a different
+model than the one asked for, and the only sign is one line in the
+pane. peeragent cannot see it: the line is not a marker, and the
+screen classifies as ready or as a trust question like any other. If
+the model matters, read the pane.
+
 | Model key | Description |
 |---|---|
 | `claude-opus-5` | Claude Opus 5 via Copilot |
