@@ -10,7 +10,7 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  47 cases and compares them with each other. All 47 agree
+  48 cases and compares them with each other. All 48 agree
   (2026-09-29). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
   passes. One case starts a fake harness in tmux; no case calls

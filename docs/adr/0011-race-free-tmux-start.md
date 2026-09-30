@@ -93,6 +93,14 @@ than a wrapper's prompt to press enter would show them. The cost is
 three extra calls at startup and the replacement of a placeholder
 shell that existed for milliseconds as scaffolding.
 
-So the difference is narrow: one way yields the exit status as a
-field, the other would have to write it into a screen. For a tool
-whose report is acted on by a program, that is worth four calls.
+Measured, both ways on an isolated server with a command that
+prints two lines and exits 7: the wrapper leaves the pane alive with
+no status recorded, the kept pane reports dead with status 7 and the
+multiplexer writes that status into the screen itself.
+
+So the difference is larger than a field against a string: with a
+wrapper, **a harness that died looks exactly like one that is
+waiting for input.** Recognising the difference would mean matching
+the wrapper's own prompt text - a line this tool would have written
+into the screen it then reports to its caller. For a report a
+program acts on, that is worth four calls instead of one.
