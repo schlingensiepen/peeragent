@@ -51,7 +51,7 @@ reports no output at all. The rest of this record is unchanged.
 
 - The ready state becomes trustworthy enough to paste into, which
   is what the paste-based delivery path depends on.
-- A harness with no working-state marker is still recognized as
+- A harness with no working-state marker is still recognised as
   working, at the cost of one extra capture and a short additional
   delay on every start.
 - Adding a harness means supplying its markers and, if it has one,

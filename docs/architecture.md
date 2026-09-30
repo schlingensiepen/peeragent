@@ -22,7 +22,7 @@ it.
 
 | Layer | Responsibility |
 |---|---|
-| CLI | recognize `--help` and then `--json` before parsing, parse arguments, select the subcommand, set the exit code |
+| CLI | recognise `--help` and then `--json` before parsing, parse arguments, select the subcommand, set the exit code |
 | Commands | one flow per subcommand: `list harness`, `list models`, `start agent`, `send`, `duplicate`, `version` |
 | Preflight | tool and argument checks per subcommand in a normative order, `fatal` with a `hint`, exactly one `info` per successful tool and harness check |
 | Runtime | create the tmux session without a race, read the pane, deliver the prompt, detect processes |
@@ -86,9 +86,9 @@ The emitter is the only writer to stdout. It exists once per run:
 a class in Python, a set of functions over global state in Bash.
 Its contract:
 
-- `--help` is recognized before anything else. It prints usage to
+- `--help` is recognised before anything else. It prints usage to
   stdout, exits 0, writes no log and opens no array.
-- `--json` is recognized before argument parsing, by looking for
+- `--json` is recognised before argument parsing, by looking for
   an argv element that is exactly `--json`. In JSON mode `[` is
   the first thing on stdout, so even an argument error appears as
   a `fatal` inside the array.
@@ -318,7 +318,8 @@ fixed string, print a banner in interactive mode, and then block.
 A variable selects the variant a case needs: normal, a trust
 question on the first screen, an immediate exit with an error
 line, a `--version` call that hangs, a `--version` call that
-fails, and a ready marker padded with U+00A0. The absence of tmux is arranged by leaving it off the
+fails, a ready marker padded with U+00A0, and a harness that
+disappears between the two captures. The absence of tmux is arranged by leaving it off the
 `PATH`.
 
 A case is a directory `fixtures/<name>/` holding the argument line
@@ -329,16 +330,16 @@ session store whose name depends on the sandbox. The argument line
 may use placeholders for the sandbox and home paths, which the
 runner substitutes at run time.
 
-Before comparing, the runner normalizes the values that cannot be
+Before comparing, the runner normalises the values that cannot be
 stable: timestamps, process ids, the pane process id, the child
 process list, the random suffix of a session name, byte and file
 counts, captured pane lines, harness version strings, the
 implementation name, and the human-readable message and hint
 texts; sandbox paths and the program name in the recorded argument
 vector are replaced as well. The peeragent version in the version
-message is not normalized. Normalizing means replacing a value
+message is not normalised. Normalizing means replacing a value
 with a fixed placeholder: whether the key is present at all
-remains part of the comparison. Messages and hints are normalized
+remains part of the comparison. Messages and hints are normalised
 because they are prose. The two programs word them independently and
 nothing requires them to agree, which is easy to confirm: ask either
 for a subcommand that does not exist and read the two answers. A
@@ -352,7 +353,7 @@ sequence. There are plain-text cases for the subcommands that need
 no pane - the listings, `duplicate`, `version` - and for a call
 without a subcommand and for `--help`; the `start agent` cases are
 compared in JSON only, and there is no case for `send` at all. A plain-text case is compared by line count
-and by the first word of each line after the same normalization. A
+and by the first word of each line after the same normalisation. A
 difference is reported as a diff.
 
 There are no unit tests. The parts that would be easier to check
@@ -383,7 +384,7 @@ folder path is made absolute first and its trailing slash
 removed; an empty basename becomes a fixed placeholder. In the
 basename every character outside letters and digits becomes a
 hyphen, and the result is truncated to 32 characters. The suffix
-is eight random hex characters. A name collision is recognized
+is eight random hex characters. A name collision is recognised
 from the error text of the create call and answered with a new
 suffix, up to a small number of attempts before the run fails.
 
@@ -391,7 +392,7 @@ The name carries the harness key in a position that can be read
 back, which is how `send` finds the right handler for a session it
 did not create.
 
-### Creating the session without a race
+### Creating the session
 
 One call creates the session with the harness already in it,
 detached, in the target folder, at a fixed pane size of 200 by 50.
@@ -488,7 +489,7 @@ that leads to the follow-up delivery.
 
 The pane process id comes from tmux. Its children are read from
 the process table, recursively to a depth of two. The short
-command name is not usable for recognizing a harness, because the
+command name is not usable for recognising a harness, because the
 kernel truncates it and several harnesses run under a wrapper; the
 full argument line is the reliable column. If the process tool is
 missing, the child list stays empty and a warning says so.

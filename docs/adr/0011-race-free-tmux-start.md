@@ -73,8 +73,8 @@ tmux new-session -d -s <name> "bash -c \"cd <folder> && <harness>; read\""
 ```
 
 This works, it needs no option set after the fact, and it needs no
-kill of any kind - one call instead of four. It is what a sibling
-tool does, and for its purpose it is the better choice.
+kill of any kind - one call instead of four. Other launchers do it
+this way, and for their purpose it is the better choice.
 
 Rejected here, for one reason: the pane is then never dead. The
 shell is its process, and the shell is alive and waiting. The

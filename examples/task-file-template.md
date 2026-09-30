@@ -81,7 +81,7 @@ back over the channel described above. Without it you cannot tell
 a harness that is working from a harness that is stuck on a
 question you never saw, and both look identical from outside.
 
-Make the signal specific enough to recognize, for example one line
+Make the signal specific enough to recognise, for example one line
 containing a word you chose.
 
 ### 3. Include the project's usual initialization steps

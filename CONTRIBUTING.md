@@ -84,7 +84,7 @@ means before you trust a green run: a mistake both programs make in
 the same way passes. A green run is evidence of equivalence, never of
 correctness. Correctness comes from reading the description and from
 running a real harness. Also know what it does not reach today: no
-case calls `send`, and no case uses a real harness. Seven do start a
+case calls `send`, and no case uses a real harness. Eight do start a
 fake one in tmux; `tests/conformance/README.md` has the current
 figures, and the log files are compared for every case.
 
@@ -103,7 +103,7 @@ name says what is covered. Files in it:
 | `argv` | one argument per line, not split, instead of `args`. Needed for an argument that is empty or holds a space |
 | `mode` | `json` (default), `plain`, or `help`: how the outputs are compared |
 | `path` | `fakes` (default), `bare` to leave the fake harnesses out, or `notmux` to hide tmux as well |
-| `env` | extra variables, one `KEY=VALUE` per line; `PEERAGENT_FAKE` selects the behaviour of the fake harnesses (`trust`, `exit`, `hang`, `noversion`, `padded`) |
+| `env` | extra variables, one `KEY=VALUE` per line; `PEERAGENT_FAKE` selects the behaviour of the fake harnesses (`trust`, `exit`, `hang`, `noversion`, `padded`, `vanish`) |
 | `home/` | a skeleton copied into the sandbox `HOME` before the run |
 | `setup.sh` | run first with `SANDBOX` and `HOME` set, for anything whose name depends on the sandbox path, such as a session store |
 
@@ -165,6 +165,15 @@ removes everything else that account was running.
 Harnesses also keep trust decisions and session histories for the
 directories you start them in, so a real run leaves entries behind in
 the harness's own configuration.
+
+## Spelling
+
+The documents use British spelling: `behaviour`, `recognise`,
+`normalise`. The one exception is `catalog`, because a field in the
+output is called `catalog_updated` and prose that spelled it
+differently from the field would be worse than inconsistent prose.
+Field names, flags and message types are never changed to match a
+document.
 
 ## Evidence
 

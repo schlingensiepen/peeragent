@@ -13,6 +13,8 @@
 #   noversion   --version fails, although the binary exists
 #   padded      the ready line carries a non-breaking space, the way a
 #               real interface pads it
+#   vanish      print a screen that matches no marker, survive the first
+#               capture and be gone before the second one
 #
 # The name it was invoked under decides the version string, so the
 # five fakes are symlinks to this one file.
@@ -68,6 +70,14 @@ BOX
     # marker comparison of one implementation until 2026-09-30.
     printf '%s\n' "$name ready"
     printf '\u276f\u00a0\n'
+    ;;
+  vanish)
+    # No marker, so the caller captures a second time after two seconds.
+    # This exits in between: the first screen is all there is, and one
+    # implementation used to report an empty screen instead of it.
+    printf '%s\n' "$name is doing something unrecognisable"
+    sleep 2
+    exit 0
     ;;
   *)
     printf '%s\n' "$name ready"

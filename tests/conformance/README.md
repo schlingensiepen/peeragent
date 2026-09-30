@@ -21,8 +21,10 @@ harness.
 
 Before comparing, values that cannot match are replaced by a
 placeholder: timestamps, process ids, the random suffix of a session
-name, byte and file counts, captured pane lines, harness version
-strings, and every free-text `msg` and `hint`. The **presence** of a
+name, byte and file counts, harness version strings, and every
+free-text `msg` and `hint`. Captured pane lines are replaced by their
+number, so what a stand-in printed stays out of the comparison while
+how much of it each program reported stays in. The **presence** of a
 key stays part of the comparison, so a field one side omits is still a
 difference. The `env` message is exempt entirely, because it describes
 the interpreter rather than the behaviour.
@@ -50,8 +52,9 @@ It reports a version, prints a banner and then blocks, so a pane stays
 alive and the first screen is predictable. `PEERAGENT_FAKE` selects
 other behaviour: `trust` prints a trust dialog, `exit` fails
 immediately, `hang` makes the version query outlast any timeout,
-`noversion` makes it fail while the binary still exists, and `padded`
-pads the ready marker with U+00A0, the way Claude Code does.
+`noversion` makes it fail while the binary still exists, `padded` pads
+the ready marker with U+00A0, the way Claude Code does, and `vanish`
+prints an unrecognisable screen and exits between the two captures.
 
 ## Adding a case
 
@@ -75,7 +78,7 @@ directory it belongs to, so it cannot be a static fixture.
 No case calls `send`, and none uses a real harness: the five names
 under `fixtures/bin/` are all one stand-in script.
 
-Seven of the 56 cases do start a fake harness in tmux, so **the suite
+Eight of the 57 cases do start a fake harness in tmux, so **the suite
 needs tmux**, and it checks for it before running anything. `run.sh`
 also refuses to run when the number of cases no longer matches the
 number written into it, because that number and the one in

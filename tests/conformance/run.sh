@@ -133,7 +133,7 @@ done
 # The number of cases, in one place. A case added or removed without
 # this number and the documents that quote it drifting apart is what
 # put three different figures into five documents.
-expected_cases=56
+expected_cases=57
 actual_cases=$(find "$fixtures" -mindepth 1 -maxdepth 1 -type d ! -name bin | wc -l)
 if [ "$actual_cases" -ne "$expected_cases" ] && [ $# -eq 0 ]; then
   printf 'fixtures/ holds %s cases, this script expects %s\n' \

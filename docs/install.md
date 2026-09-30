@@ -260,7 +260,7 @@ What is left behind on purpose:
 - The tmux sessions of harnesses that are still running. peeragent
   never ends a session, so they are yours to close. List them with
   `tmux ls` and
-  end the ones you recognize by name; the names begin with
+  end the ones you recognise by name; the names begin with
   `peeragent-`.
 
 Nothing else is touched. peeragent writes no configuration file

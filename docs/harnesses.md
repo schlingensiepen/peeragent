@@ -554,7 +554,7 @@ paste once the pane reaches it.
 **Process picture.** The pane process re-executes itself with
 internal flags, seen as
 `agy --bg-updater --app_data_dir=antigravity-cli --gemini_dir=.gemini`
-(`tested` 2026-08-17). The command line stays recognizable even
+(`tested` 2026-08-17). The command line stays recognisable even
 though the short process name does not.
 
 ### Installing the Antigravity CLI

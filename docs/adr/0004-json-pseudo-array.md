@@ -29,7 +29,7 @@ buffered as one:
 - Between two objects there is a line holding only a comma.
 - The last line is a closing bracket.
 
-The opening bracket is written as soon as the flag is recognized,
+The opening bracket is written as soon as the flag is recognised,
 which happens before argument parsing. An argument error is
 therefore emitted as a fatal message inside the array, with the
 argument-error exit code, and no usage text reaches stdout. The

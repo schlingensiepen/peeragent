@@ -37,8 +37,10 @@ the working directory, at a fixed pane size. Mouse mode follows,
 for the person who attaches; a failure there is not worth stopping
 for, because the harness is running, which is what was asked.
 
-Nothing is killed, nothing is replaced, no option is set on the
-pane. **peeragent ends no session and no harness, under any
+Nothing is killed and nothing is replaced. One option is set, mouse
+mode on the new session, and it is set through the pane target form
+because that is what the session option needs; a failure there is
+ignored. **peeragent ends no session and no harness, under any
 circumstances.**
 
 One qualification, so the claim is exact: the deadlines on peeragent's
@@ -74,8 +76,8 @@ running the same harness by hand.
 
 ## Alternatives considered
 
-Wrapping the harness in a shell that outlives it, which is what a
-sibling tool does. Measured on 2026-09-30: the pane then stays alive
+Wrapping the harness in a shell that outlives it, as other launchers
+do. Measured on 2026-09-30: the pane then stays alive
 with the wrapper waiting in it, no status is recorded, and **a
 harness that died is indistinguishable from one waiting for input**.
 Telling them apart would mean matching the wrapper's own prompt text

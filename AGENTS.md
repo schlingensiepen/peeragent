@@ -24,7 +24,7 @@ answer and a prompt handed over afterwards with `send` was run through
 to an answer for `agy` only.
 The two programs agree with each other on every conformance case in
 this repository. That shows they behave alike, not that either is
-correct. Seven of the cases start a fake harness in tmux, none a real
+correct. Eight of the cases start a fake harness in tmux, none a real
 one; [MATURITY.md](MATURITY.md) carries the count.
 `--resume`, `--model` and `duplicate` were run through both programs
 against real harnesses on 2026-09-30. `--resume` for the Codex CLI,

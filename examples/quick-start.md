@@ -1,7 +1,7 @@
 # Quick start: one session from beginning to end
 
 This walks through a single use of peeragent: write the
-assignment, start a harness, recognize the question it stops on,
+assignment, start a harness, recognise the question it stops on,
 answer it with the right key sequence, deliver the prompt that was
 left behind, and look at the result.
 

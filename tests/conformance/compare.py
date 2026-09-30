@@ -27,7 +27,6 @@ OPAQUE = {
     "child_processes",
     "bytes",
     "files",
-    "lines",
     "impl",
     "impl_version",
     "msg",
@@ -50,6 +49,15 @@ def sanitized(path):
 def normalise(value, key=None, sandbox=None, home=None):
     if key in OPAQUE:
         return f"<{key}>"
+    # The captured screen itself cannot be compared: it is a stand-in's
+    # output at a moment in time. How many lines of it a program reports
+    # can be, and it carries the part that matters - whether the screen
+    # was reported at all, and whether both give up on it at the same
+    # point. A program that emptied the payload on a failed second
+    # capture while the other kept the first screen was invisible here
+    # for exactly as long as this was `<lines>`.
+    if key == "lines" and isinstance(value, list):
+        return f"<lines:{len(value)}>"
     if isinstance(value, dict):
         return {k: normalise(v, k, sandbox, home) for k, v in value.items()}
     if isinstance(value, list):

@@ -159,6 +159,7 @@ the channel.
 | [examples/quick-start.md](examples/quick-start.md) | One session from start to finish |
 | [tests/conformance/README.md](tests/conformance/README.md) | The check behind the equivalence claim, and how to run it yourself |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Changing the two programs, the conformance test, reporting a harness-specific bug |
+| [SECURITY.md](SECURITY.md) | What counts as a security report here, and how to send one |
 | [CHANGELOG.md](CHANGELOG.md) | What changed per version |
 
 To change the code or the tests, see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -172,6 +173,9 @@ Include the output of `peeragent version` and
 `peeragent list harness --json`, the harness and its version, what
 you expected, what happened, and the log files of the failing run
 from `~/.local/state/peeragent/logs/`.
+
+For a security report, read [SECURITY.md](SECURITY.md) first: it does
+not belong in a public issue.
 
 Log files contain the text of your launch prompt, the captured pane
 content and absolute file paths.

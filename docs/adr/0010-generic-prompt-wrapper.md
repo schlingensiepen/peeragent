@@ -57,5 +57,5 @@ whose duplication caused the dropped flags.
 
 Always writing the prompt into the pane after boot, for every
 harness. Rejected: for harnesses that accept an argument prompt it
-would trade a reliable path for one that depends on recognizing
+would trade a reliable path for one that depends on recognising
 the right moment on screen.

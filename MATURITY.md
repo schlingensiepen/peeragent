@@ -10,19 +10,21 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  56 cases and compares them with each other. All 56 agree
+  57 cases and compares them with each other. All 57 agree
   (2026-09-30). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
-  passes. Seven cases start a fake harness in tmux, one of them a
-  harness that exits at once; no case calls `send`, and no case uses a
+  passes. Eight cases start a fake harness in tmux, one of them a
+  harness that exits at once and one that disappears between the two
+  captures; no case calls `send`, and no case uses a
   real harness. The log files are compared for every case, by the
   sequence of message types they hold. This count and the one in
   `tests/conformance/README.md` are the only two; `run.sh` refuses to
   run if the number of cases has drifted away from it.
   A workflow under `.github/workflows/` runs that same comparison on a
   hosted machine, which is what would show it does not depend on one
-  person's setup. It has **never run**: this repository is not public
-  yet, so nothing has executed it. Treat it as intent, not evidence.
+  person's setup. As of this report date it has **never run**, so
+  there is no hosted evidence of anything in this document. Treat the
+  workflow as intent until a run of it is linked here.
 - **Runs against real harnesses.** On 2026-09-29 both programs were
   started against all five real harnesses on a test host, and one
   `agy` session was taken through the whole path with `send`. These
@@ -233,7 +235,7 @@ the alternative. It happens before anything is copied.
 - **A model that a harness refuses can pass unnoticed.** The GitHub
   Copilot CLI answers an unknown model key with one line in the pane
   and then runs with its automatic choice instead (`tested`
-  2026-09-30 for three keys from the catalogue in this repository, on
+  2026-09-30 for three keys from the catalog in this repository, on
   one host and one account). Nothing about that reaches the output:
   the line is not a marker, and the screen classifies as ready or as
   a trust question like any other. A caller for whom the model
@@ -338,6 +340,13 @@ the alternative. It happens before anything is copied.
   preflight success lines that `cli.md` lists, which are the same in
   both. `output-format.md` states the rule; a caller that matches on
   any other text is matching on something nothing guarantees.
+- **`--verbose` output is not part of the equivalence either.** The
+  `debug` and `timing` messages that `--verbose` adds are written
+  independently in the two programs: they count different steps and
+  emit them in a different order, and `send` reports three timing
+  steps in one program and none in the other. They are there to be
+  read by a person looking at a run, not to be parsed, and the
+  conformance test does not compare them.
 - **`busy` and `unknown` can differ between the two programs.**
   Whenever the first capture did not match a trust, authentication or
   provider question - so for a ready, busy or unrecognised screen

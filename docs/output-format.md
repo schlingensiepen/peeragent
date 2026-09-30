@@ -77,7 +77,7 @@ That is where the name comes from.
 
 - Encoding is UTF-8, the line ending is LF.
 - `[` is the first thing on stdout.
-  It is written as soon as `--json` has been recognized, before
+  It is written as soon as `--json` has been recognised, before
   argument parsing, so that even an argument error appears inside
   the array.
   The last line is `]`.
@@ -87,7 +87,7 @@ That is where the name comes from.
 - An argument error is a `fatal` message inside the array with exit
   code 2.
   No usage text is printed on stdout.
-- `--help` and `-h` are recognized before parsing as well and take
+- `--help` and `-h` are recognised before parsing as well and take
   precedence over `--json`: the usage text is printed and no array
   is opened.
 - Numbers are unquoted, booleans are `true` and `false`, and an
@@ -313,12 +313,19 @@ What to do with each state in practice is in
 
 | Code | Meaning | Examples |
 |---|---|---|
-| `0` | Success, also with warnings or single errors | A recognized trust prompt, a deferred prompt, `list harness` without a single installed harness |
+| `0` | Success, also with warnings or single errors | A recognised trust prompt, a deferred prompt, `list harness` without a single installed harness |
 | `1` | Runtime failure | `git init` failed, session creation failed, a session-name collision that persisted over five attempts, the destination session store already exists, the cheap check on the destination failed, the paste in `send` failed |
 | `2` | Argument validation | Unknown flag or subcommand, unknown harness key, missing folder, `.git` conflict with `--git-repo`, prompt file missing, empty or longer than 120 effective characters, duplication not supported for this harness, `--no-log` together with `--log-file`, missing session in `send`, `--boot-wait` or `--wait` on the wrong subcommand |
 | `3` | A tool or harness is not installed | tmux missing, a known harness missing, git missing with `--git-repo` |
 | `4` | The harness was no longer alive after the boot wait | `agent.exited` |
 | `130` | SIGINT | Interruption during the boot wait or a wait; the tmux session is left standing |
+
+One exit is outside this table and outside the array: the Bash
+program checks its own interpreter version before anything else and
+ends with code 1 and a plain line on stderr if bash is older than
+4.4. At that point the emitter does not exist yet, so there is no
+frame to close and no message to put in it. The Python program does
+not check its interpreter version; a version too old fails on syntax.
 
 When several codes would apply, the code of the first `fatal` in
 preflight order wins.
