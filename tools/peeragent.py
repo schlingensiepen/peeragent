@@ -321,6 +321,19 @@ class Stopwatch:
 # Helpers
 # ---------------------------------------------------------------------------
 
+# The two whitespace sets for pane content, spelled out because the other
+# program cannot do better than spell them out, and the two have to be the
+# same set. str.strip() without an argument takes every Unicode whitespace
+# character, so a surface padded with U+2003 or U+3000 would be read as a
+# marker here and as an unrecognised screen there.
+# PAD_WS is the wide set for comparing a line against a marker: a foreign
+# interface pads its input line however it likes. RIGHT_WS is the narrow
+# set for the right edge of a captured line, which carries terminal
+# padding and, on some terminals, a carriage return.
+PAD_WS = " \t\r\n\u00a0"
+RIGHT_WS = " \t\r"
+
+
 def abs_path(path: str) -> str:
     return os.path.realpath(path)
 
@@ -551,7 +564,7 @@ def line_has_exact(text: str, token: str) -> bool:
     is deliberate: that count has to be predictable for a caller, this
     comparison has to tolerate somebody else's screen.
     """
-    return any(line.strip() == token for line in text.split("\n"))
+    return any(line.strip(PAD_WS) == token for line in text.split("\n"))
 
 
 class Handler:
@@ -753,7 +766,7 @@ class AgyHandler(Handler):
         if "Select login method" in pane_text or "not signed in" in pane_text:
             return "auth_prompt"
         for line in pane_text.split("\n"):
-            if line.strip() == ">":
+            if line.strip(PAD_WS) == ">":
                 return "ready"
         return "unknown"
 
@@ -992,7 +1005,7 @@ def capture_pane(name: str) -> Optional[list[str]]:
     if cp is None or cp.returncode != 0:
         return None
     text = decode(cp.stdout)
-    lines = [line.rstrip() for line in text.split("\n")]
+    lines = [line.rstrip(RIGHT_WS) for line in text.split("\n")]
     while lines and lines[-1] == "":
         lines.pop()
     return lines

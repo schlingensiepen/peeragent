@@ -58,7 +58,7 @@ prints.
 |---|---|---|---|---|---|---|---|
 | `claude` | Claude Code CLI (Anthropic) | `claude` | `argv` | `ok` | `ok`, tested | `Down Enter` | `2.1.278 (Claude Code)` |
 | `codex` | OpenAI Codex CLI | `codex` | `argv` | `experimental` | `unsupported` | `1` | `codex-cli 0.147.0` |
-| `agy` | Google Antigravity CLI | `agy` | `send_keys` | `experimental` | `unsupported` | `Enter` | `1.2.12` |
+| `agy` | Google Antigravity CLI | `agy` | `send_keys` | `experimental` | `unsupported` | `Enter` | `1.2.8` |
 | `opencode` | OpenCode (anomalyco) | `opencode` | `send_keys` | `experimental` | `unsupported` | none | `1.18.25` |
 | `copilot` | GitHub Copilot CLI | `copilot` | `argv` | `experimental` | `unsupported` | `1` | `GitHub Copilot CLI 1.0.88.` |
 
@@ -283,7 +283,7 @@ reasoning effort is a separate setting of the harness.
 | `gpt-5.4` | Legacy, retires 2026-08-31 |
 | `gpt-5.4-mini` | Legacy fast and cheap |
 | `gpt-5.3-codex` | Prior codex-specialist model |
-| `gpt-5-codex` | Canonical example identifier in the official docs |
+| `gpt-5-codex` | Canonical example ID in the official docs |
 
 Some of these need a ChatGPT login rather than an API key
 (`documented`).

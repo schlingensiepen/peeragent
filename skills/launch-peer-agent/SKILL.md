@@ -76,7 +76,11 @@ call-compatible. Use `peeragent.py` where Python 3.11 or newer is
 available, otherwise the bash version. Output and log are
 structurally the same, so you may mix them within one project.
 
-Two differences are known and neither changes what you do. The
+The two agree on message types and fields, not on the wording of
+`msg` and `hint` - never match on that text, read the fields.
+
+Beyond the wording, two differences are known and neither changes what
+you do. The
 environment message reports the interpreter. And a screen with
 something moving on it and no marker may come back as `busy` from
 one program and `unknown` from the other; both mean the same for

@@ -62,6 +62,15 @@ if ! command -v tmux >/dev/null 2>&1; then
   exit 3
 fi
 
+# Same reasoning as for tmux, one size smaller: without git the two cases
+# about --git-repo make both programs answer fatal (3) for the same wrong
+# reason, and the suite counts them as agreement.
+if ! command -v git >/dev/null 2>&1; then
+  printf 'git is not on PATH; the cases for --git-repo need it, and\n' >&2
+  printf 'without it they agree for the wrong reason\n' >&2
+  exit 3
+fi
+
 # The canary: if this does not work, nothing below means anything.
 for impl in "$py" "$sh"; do
   case "$impl" in

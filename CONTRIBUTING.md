@@ -68,8 +68,8 @@ tests/conformance/run.sh version-json    # only the named cases
 KEEP=1 tests/conformance/run.sh          # keep the sandbox to look at
 ```
 
-It needs `bash`, `python3` and `tmux`; the runner checks for all
-three before any case runs. Exit code 0 means every case agreed, 1
+It needs `bash`, `python3`, `tmux` and `git`; the runner checks for
+all four before any case runs. Exit code 0 means every case agreed, 1
 that at least one did not, and 3 that the run never got started - a
 missing program or tmux, an unusable sandbox path, a case count that
 no longer matches, a `bare` PATH that still finds a harness, or no
@@ -99,10 +99,11 @@ name says what is covered. Files in it:
 
 | File | Meaning |
 |---|---|
-| `args` | one line, the arguments. `@SANDBOX@` and `@HOME@` are replaced at run time |
+| `args` | one line, the arguments, split on whitespace. `@SANDBOX@` and `@HOME@` are replaced at run time |
+| `argv` | one argument per line, not split, instead of `args`. Needed for an argument that is empty or holds a space |
 | `mode` | `json` (default), `plain`, or `help`: how the outputs are compared |
 | `path` | `fakes` (default), `bare` to leave the fake harnesses out, or `notmux` to hide tmux as well |
-| `env` | extra variables, one `KEY=VALUE` per line; `PEERAGENT_FAKE` selects the behaviour of the fake harnesses (`trust`, `exit`, `hang`, `noversion`) |
+| `env` | extra variables, one `KEY=VALUE` per line; `PEERAGENT_FAKE` selects the behaviour of the fake harnesses (`trust`, `exit`, `hang`, `noversion`, `padded`) |
 | `home/` | a skeleton copied into the sandbox `HOME` before the run |
 | `setup.sh` | run first with `SANDBOX` and `HOME` set, for anything whose name depends on the sandbox path, such as a session store |
 

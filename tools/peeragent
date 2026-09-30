@@ -54,7 +54,7 @@ readonly CATALOG_UPDATED="2026-08-16"
 # implementations; a Unicode aware trim would treat NBSP as whitespace and
 # shift the result at the limit.
 readonly WS4=$' \t\r\n'
-readonly RWS=$' \t'
+readonly RWS=$' \t\r'
 # Padding a terminal interface may put around a marker. Wider than WS4 on
 # purpose: the prompt-length count has to be predictable for a caller and
 # uses the narrow set, while a marker comparison has to tolerate somebody
@@ -729,28 +729,6 @@ rand_hex8() {
 }
 HEX8=""
 
-# 48 bit millisecond timestamp, version nibble, random tail. Kept here
-# because a session store key has to be new but sortable by creation time.
-uuid7() {
-  local ms hex rnd a b c d e
-  ms=$(date +%s%3N 2>/dev/null) || ms=0
-  printf -v hex '%012x' "$((10#${ms:-0}))"
-  rnd=""
-  if [[ -r /proc/sys/kernel/random/uuid ]]; then rnd=$(</proc/sys/kernel/random/uuid); fi
-  rnd=${rnd//-/}
-  while ((${#rnd} < 32)); do
-    printf -v a '%04x' $((RANDOM))
-    rnd+=$a
-  done
-  a=${hex:0:8}
-  b=${hex:8:4}
-  c="7${rnd:0:3}"
-  printf -v d '%x' $((0x8 + (16#${rnd:3:1} % 4)))
-  d="$d${rnd:4:3}"
-  e=${rnd:7:12}
-  UUID7="$a-$b-$c-$d-$e"
-}
-UUID7=""
 
 # Effective prompt length: trim, split on the four whitespace code points,
 # drop tokens that start with a slash so that absolute paths cost nothing,
@@ -1460,10 +1438,14 @@ pane_state() {
 # live pane or nothing at all.
 capture_pane() {
   local sess=$1 l
-  CAP_LINES=()
   local -a raw=()
   tmux_run capture-pane -t "=$sess:" -p
+  # Only on success is the previous capture given up. A second capture
+  # that finds the session gone must not turn the first screen into an
+  # empty one: that screen is then all there is to report, and reporting
+  # it is honest. The other program keeps it for the same reason.
   ((RUN_RC == 0)) || return 1
+  CAP_LINES=()
   mapfile -t raw <"$RUN_OUT_FILE"
   local -a out=()
   for l in ${raw[@]+"${raw[@]}"}; do

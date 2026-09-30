@@ -55,8 +55,8 @@ project.
 
 One implementation in Python, with a vendored helper for anything
 the standard library lacks. Rejected: it leaves hosts without a
-suitable Python unserved, and it removes the pressure on the
-specification.
+suitable Python unserved, and it removes the pressure to say what the
+behaviour is in words rather than in one program's habits.
 
 One implementation in Bash only. Rejected: the parts that are
 straightforward in Python, including JSON handling and the

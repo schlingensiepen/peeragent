@@ -1,6 +1,6 @@
 # Maturity
 
-**Report date:** 2026-09-29 · **peeragent version:** 0.1.0
+**Report date:** 2026-09-30 · **peeragent version:** 0.1.0
 
 Both command-line programs are in this repository:
 `tools/peeragent.py` (Python, standard library only) and
@@ -310,8 +310,9 @@ the alternative. It happens before anything is copied.
   code 2 in one conformance case, which shows they agree on that
   case. Run once by hand with a stand-in harness on 2026-09-29, both
   programs accepted a prompt of exactly 120 effective characters next
-  to a path and refused one of 121 (`observed`). The counting rule has
-  no test of its own beyond that, so its other edge cases (a path with
+  to a path and refused one of 121 (`observed`). A conformance case has
+  covered the accepted 120-character prompt since 2026-09-30; its other
+  edge cases (a path with
   a space, a quoted path, text without word boundaries) are
   `unverified`, and the limit has not been met in a run against a
   real harness.
@@ -329,6 +330,14 @@ the alternative. It happens before anything is copied.
 - A screen is a snapshot. While a harness streams its answer, the
   state cannot always be told from one capture, which is why
   peeragent captures twice before it calls a screen unclassified.
+- **The wording of `msg` and `hint` is not part of the equivalence.**
+  Both programs emit the same message types with the same fields in
+  the same order, and the conformance test holds them to that. The
+  texts inside `msg` and `hint` are written independently in the two
+  programs and differ in many places. The one exception is the fixed
+  preflight success lines that `cli.md` lists, which are the same in
+  both. `output-format.md` states the rule; a caller that matches on
+  any other text is matching on something nothing guarantees.
 - **`busy` and `unknown` can differ between the two programs.**
   Whenever the first capture did not match a trust, authentication or
   provider question - so for a ready, busy or unrecognised screen

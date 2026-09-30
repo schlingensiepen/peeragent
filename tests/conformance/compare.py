@@ -146,7 +146,7 @@ def compare_json(a_path, b_path, boxes):
 def log_types(state_dir):
     """The message types of the newest log under a sandbox HOME.
 
-    The specification asks for the same sequence of types in both logs,
+    The reference documents ask for the same sequence of types in both logs,
     with debug and timing left out - those are diagnostic noise whose
     number legitimately differs. A log that cannot be parsed is itself a
     finding: the frame has to survive every path.
@@ -243,7 +243,7 @@ def main():
     else:
         raise SystemExit(f"unknown mode: {mode}")
 
-    # The log is compared for every case: the specification asks for the
+    # The log is compared for every case: the reference documents ask for the
     # same sequence of message types in both, whatever the mode.
     problems += compare_logs(boxes[0][1], boxes[1][1])
 

@@ -1,6 +1,7 @@
 # 0014. Trust answers are key sequences, busy before ready
 
-- Status: Accepted
+- Status: Accepted; one sentence in it was overtaken by
+  [0017](0017-simplest-start.md)
 - Date: 2026-09-23
 
 ## Context
@@ -41,7 +42,10 @@ harness is working, and the state is reported as busy even though
 no text said so.
 
 The output of a dead pane is read from the scroll history, not from
-the visible area.
+the visible area. **This no longer holds.** Record 0017 gave up
+keeping the pane alive after its process exits, so there is no dead
+pane and no scroll-history branch; a start whose session is gone
+reports no output at all. The rest of this record is unchanged.
 
 ## Consequences
 

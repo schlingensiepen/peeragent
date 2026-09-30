@@ -15,7 +15,9 @@ each other.
 That choice has a consequence worth stating plainly: a mistake both
 programs make in the same way passes. What this test finds is
 divergence, which is the failure mode that matters when a contract has
-two implementations. Reading the specification is what finds the rest.
+two implementations. What finds the rest is reading the reference
+documents under `docs/` against the two programs, and running a real
+harness.
 
 Before comparing, values that cannot match are replaced by a
 placeholder: timestamps, process ids, the random suffix of a session
@@ -47,8 +49,9 @@ and no real harness is ever called.
 It reports a version, prints a banner and then blocks, so a pane stays
 alive and the first screen is predictable. `PEERAGENT_FAKE` selects
 other behaviour: `trust` prints a trust dialog, `exit` fails
-immediately, `hang` makes the version query outlast any timeout, and
-`noversion` makes it fail while the binary still exists.
+immediately, `hang` makes the version query outlast any timeout,
+`noversion` makes it fail while the binary still exists, and `padded`
+pads the ready marker with U+00A0, the way Claude Code does.
 
 ## Adding a case
 
@@ -56,7 +59,8 @@ A case is a directory under `fixtures/` containing:
 
 | File | Meaning |
 |---|---|
-| `args` | one line, the arguments. `@SANDBOX@` and `@HOME@` are replaced at run time |
+| `args` | one line, the arguments, split on whitespace. `@SANDBOX@` and `@HOME@` are replaced at run time |
+| `argv` | one argument per line, not split, instead of `args`. The only way to pass an argument that is empty or holds a space |
 | `mode` | `json` (default), `plain`, or `help` — how the outputs are compared |
 | `path` | `fakes` (default), `bare` to leave the fake harnesses out, or `notmux` to hide tmux as well |
 | `env` | extra variables, one `KEY=VALUE` per line |

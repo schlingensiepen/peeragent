@@ -69,7 +69,13 @@ Both programs accept the same arguments and produce the same
 messages in the same order, so the choice is free and may differ
 between projects.
 
-That equivalence is checked, and it has two named exceptions. The
+What that equivalence promises is the sequence of messages, their
+types and their fields. It does not promise the wording of `msg` and
+`hint`: each program phrases those for itself, and a caller that
+matches on their text is relying on something no document guarantees.
+Read the fields instead.
+
+Two exceptions to the promise are named. The
 message describing the environment reports the interpreter, so it
 differs by construction. And on a screen that matches no marker and
 carries something moving, such as a spinner, one program may call it

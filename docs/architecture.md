@@ -64,7 +64,7 @@ rule side by side:
 ```text
 1   header: license, PEERAGENT_VERSION, constants, minimum versions
 2   emitter and log
-3   helpers: paths, sanitizing, redaction, subprocess, UUIDv7
+3   helpers: paths, sanitizing, redaction, subprocess
 4   catalogs (data)
 5   handler contract and the handler sections
 6   runtime (tmux)
@@ -207,7 +207,7 @@ the core dispatches by building the function name from the key:
 | Function | Result on stdout |
 |---|---|
 | `h_<key>_meta` | the constants, pipe-separated: `description`, `binary`, `prompt_delivery`, `resume_support`, `duplicate_support`, `duplicate_tested`, `trust_answer` |
-| `h_<key>_hints` | the three hint texts, pipe-separated: `resume_hint`, `duplicate_refusal_hint`, `resume_failure_hint`; an empty field stands for null |
+| `h_<key>_resume_hint`, `h_<key>_duplicate_refusal_hint`, `h_<key>_resume_failure_hint` | one hint text each, or nothing at all for null. The core reaches them through `handler_hint <key> <name>`, which is also what makes a missing function mean null |
 | `h_<key>_detect` | `installed\|path\|version`, with `installed` as 0 or 1 and an empty `version` standing for null |
 | `h_<key>_list_models` | one record per line, `key\|description\|catalog_updated` |
 | `h_<key>_launch_argv <folder> <resume>` | the argv, NUL-separated |
@@ -317,8 +317,8 @@ own `PATH`. The harnesses on that `PATH` are fake binaries in
 fixed string, print a banner in interactive mode, and then block.
 A variable selects the variant a case needs: normal, a trust
 question on the first screen, an immediate exit with an error
-line, a `--version` call that hangs, and a `--version` call that
-fails. The absence of tmux is arranged by leaving it off the
+line, a `--version` call that hangs, a `--version` call that
+fails, and a ready marker padded with U+00A0. The absence of tmux is arranged by leaving it off the
 `PATH`.
 
 A case is a directory `fixtures/<name>/` holding the argument line
@@ -350,8 +350,8 @@ length and that each position is equal as a parsed object, that
 the exit codes match, and that the logs parse with the same type
 sequence. There are plain-text cases for the subcommands that need
 no pane - the listings, `duplicate`, `version` - and for a call
-without a subcommand and for `--help`; `start agent` and `send` are
-compared in JSON only. A plain-text case is compared by line count
+without a subcommand and for `--help`; the `start agent` cases are
+compared in JSON only, and there is no case for `send` at all. A plain-text case is compared by line count
 and by the first word of each line after the same normalization. A
 difference is reported as a diff.
 
@@ -427,7 +427,11 @@ argument of arbitrary length in a variable as safely. The wrapper
 looks like this:
 
 ```text
-bash -c 'pf=$1; shift; exec "$@" "$(cat "$pf")"' _ <prompt-file> <launch_argv> <model_argv> <prompt_prefix_argv>
+bash -c 'pf=$1; shift; p=$(cat "$pf")
+  while [ "${p%$'\r'}" != "$p" ] || [ "${p%$'\n'}" != "$p" ]; do
+    p=${p%$'\r'}; p=${p%$'\n'}
+  done
+  exec "$@" "$p"' _ <prompt-file> <launch_argv> <model_argv> <prompt_prefix_argv>
 ```
 
 The first argument is the absolute prompt file; after the shift

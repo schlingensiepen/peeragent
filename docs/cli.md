@@ -123,8 +123,8 @@ templates for repository setup.
 peeragent list git-templates
 ```
 
-**Flow:** the call is rejected as an unknown second token after
-`list`.
+**Flow:** the call is rejected with a message of its own, naming the
+two second tokens `list` accepts.
 
 **Output:** a single `fatal`.
 

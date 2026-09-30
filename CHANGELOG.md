@@ -26,8 +26,9 @@ and what is not is recorded in [MATURITY.md](MATURITY.md).
 ### Added
 
 - Two call-compatible programs, one in Python using the standard
-  library only and one in Bash, producing the same messages in the
-  same order, with the exceptions named in
+  library only and one in Bash, producing the same message types with
+  the same fields in the same order. The wording of `msg` and `hint`
+  is each program's own; the exceptions to the rest are named in
   [MATURITY.md](MATURITY.md).
 - `peeragent start agent` launches one of the supported harnesses in
   its own tmux session, waits for it to come up, reports the visible
