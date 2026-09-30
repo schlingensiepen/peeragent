@@ -10,7 +10,7 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  50 cases and compares them with each other. All 50 agree
+  51 cases and compares them with each other. All 51 agree
   (2026-09-29). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
   passes. Four cases start a fake harness in tmux, one of them a harness that exits at once; no case calls
@@ -94,12 +94,21 @@ you is worth most.
 run of 2026-09-29 covers the first screen of each harness and the
 one `agy` path, nothing more.
 
-Not exercised by either kind of check against a real harness:
-`--resume`, `--model`, `--git-repo` on a directory that has no
-repository yet, and `--log-file`. The exit code 4 path is covered by a
-conformance case with a stand-in that exits at once (`tested`
-2026-09-30, both programs); exit code 130 after Ctrl-C during the boot
-wait was seen once by hand (`observed` 2026-09-29).
+Exercised against real harnesses on 2026-09-30, both programs:
+`--model` for Claude Code and the Antigravity CLI, `--resume` for
+Claude Code with a replayed conversation, `--resume` for the
+Antigravity CLI including the warning it carries, `--git-repo` on a
+folder without a repository and inside one, `--log-file` in its three
+cases, `duplicate` against a real session history with a replay in the
+copy, and exit code 130 after an interrupt during the boot wait. Exit
+code 4 is covered by a conformance case with a stand-in that exits at
+once.
+
+Still not exercised against a real harness: `--model` and `--resume`
+for the Codex CLI, OpenCode and the Copilot CLI, which need a quota, a
+provider and a login respectively. The documented fallback of two of
+them to the most recent session anywhere is therefore still
+`unverified`, and it is the riskiest of the remaining gaps.
 
 The harness behaviour these commands are built on is in the next
 table.

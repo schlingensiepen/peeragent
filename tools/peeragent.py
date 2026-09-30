@@ -542,6 +542,15 @@ def generic_detect(binary: str) -> HarnessInfo:
 
 
 def line_has_exact(text: str, token: str) -> bool:
+    """Whether some line is exactly the token once padding is removed.
+
+    Wide whitespace on purpose, non-breaking space included: a terminal
+    interface pads its input line however it likes - Claude Code uses
+    U+00A0 - and the comparison has to survive that. This is not the
+    narrow definition the prompt-length count uses, and the difference
+    is deliberate: that count has to be predictable for a caller, this
+    comparison has to tolerate somebody else's screen.
+    """
     return any(line.strip() == token for line in text.split("\n"))
 
 

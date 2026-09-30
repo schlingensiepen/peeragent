@@ -55,6 +55,11 @@ readonly CATALOG_UPDATED="2026-08-16"
 # shift the result at the limit.
 readonly WS4=$' \t\r\n'
 readonly RWS=$' \t'
+# Padding a terminal interface may put around a marker. Wider than WS4 on
+# purpose: the prompt-length count has to be predictable for a caller and
+# uses the narrow set, while a marker comparison has to tolerate somebody
+# else's screen - Claude Code pads its input line with U+00A0.
+readonly PADWS=$' \t\r\n\u00a0'
 
 HOME_DIR=${HOME:-/}
 
@@ -672,6 +677,14 @@ trim4() {
   TRIMMED=$s
 }
 
+# For comparing a line against a marker, not for counting.
+trim_pad() {
+  local s=$1
+  s=${s#"${s%%[!$PADWS]*}"}
+  s=${s%"${s##*[!$PADWS]}"}
+  TRIMMED=$s
+}
+
 trim_right() {
   local s=$1
   s=${s%"${s##*[!$RWS]}"}
@@ -943,7 +956,7 @@ emit_detect_line() {
 has_ready_glyph() {
   local text=$1 line
   while IFS= read -r line; do
-    trim4 "$line"
+    trim_pad "$line"
     [[ $TRIMMED == "❯" ]] && return 0
   done <<<"$text"
   return 1
@@ -1170,7 +1183,8 @@ h_agy_detect_prompt_type() {
   fi
   # The input line is a bare greater-than sign once the harness is ready.
   while IFS= read -r line; do
-    if [[ ${line//[[:space:]]/} == ">" ]]; then
+    trim_pad "$line"
+    if [[ $TRIMMED == ">" ]]; then
       printf 'ready\n'
       return
     fi
