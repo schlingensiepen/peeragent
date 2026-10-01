@@ -4,10 +4,12 @@ All notable changes to peeragent are recorded here.
 The format follows Keep a Changelog, and the version numbers follow
 Semantic Versioning.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-10-01
 
-Not released. Both programs are in this repository; what is verified
-and what is not is recorded in [MATURITY.md](MATURITY.md).
+First release, and a pre-release: both programs are in this
+repository and run. What is verified and what is not is recorded in
+[MATURITY.md](MATURITY.md); read it before relying on any statement
+made here.
 
 ### Changed
 
