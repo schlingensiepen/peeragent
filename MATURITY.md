@@ -20,14 +20,24 @@ document keeps them apart:
   sequence of message types they hold. This count and the one in
   `tests/conformance/README.md` are the only two; `run.sh` refuses to
   run if the number of cases has drifted away from it.
-  A workflow under `.github/workflows/` runs that same comparison on a
-  hosted machine, which is what shows the result does not depend on
-  one person's setup. It has run on every push since 2026-09-29,
-  eleven times, and every completed run passed. The run of 2026-10-01
-  took the 57 cases through **tmux 3.4 and Python 3.12.3**, both
-  different from the versions on the machine where the work is done,
-  which is the part worth having: the agreement is not an artefact of
-  one tmux build.
+  A workflow under `.github/workflows/` runs that same comparison on
+  hosted machines, which is what shows the result does not depend on
+  one person's setup. It has run on every push since 2026-09-29, and
+  every completed run passed. Since 2026-10-01 it runs on two images,
+  so the 57 cases have now agreed across three environments:
+
+  | Where | bash | Python | tmux | Result |
+  |---|---|---|---|---|
+  | development host | 5.2.37 | 3.13.5 | 3.5a | 57 of 57 |
+  | Ubuntu 24.04 (`ubuntu-latest`) | 5.2.21 | 3.12.3 | 3.4 | 57 of 57 |
+  | Ubuntu 26.04 | 5.3.9 | 3.14.4 | 3.6 | 57 of 57 |
+
+  The third row is the one the floating `ubuntu-latest` label moves to
+  on 2026-10-19; naming it now means that date has already been
+  measured rather than waited for. It does not fail the workflow, so a
+  break there is reported and not hidden. That the agreement holds
+  across three tmux versions, three Python versions and two bash
+  versions is what makes it more than a property of one machine.
 - **Runs against real harnesses.** On 2026-09-29 both programs were
   started against all five real harnesses on a test host, and one
   `agy` session was taken through the whole path with `send`. These
