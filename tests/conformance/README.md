@@ -53,8 +53,12 @@ alive and the first screen is predictable. `PEERAGENT_FAKE` selects
 other behaviour: `trust` prints a trust dialog, `exit` fails
 immediately, `hang` makes the version query outlast any timeout,
 `noversion` makes it fail while the binary still exists, `padded` pads
-the ready marker with U+00A0, the way Claude Code does, and `vanish`
-prints an unrecognisable screen and exits between the two captures.
+the ready marker with U+00A0, the way Claude Code does, `vanish`
+prints an unrecognisable screen and exits between the two captures, and
+`needenv` refuses to start unless `--sandbox` was passed through and
+`PROBE=expected` arrived in the environment - which turns a failed
+pass-through into a session that is gone, something the comparison can
+see even though the captured screen is compared only by line count.
 
 ## Adding a case
 
@@ -78,7 +82,7 @@ directory it belongs to, so it cannot be a static fixture.
 No case calls `send`, and none uses a real harness: the five names
 under `fixtures/bin/` are all one stand-in script.
 
-Eight of the 57 cases do start a fake harness in tmux, so **the suite
+Nine of the 61 cases do start a fake harness in tmux, so **the suite
 needs tmux**, and it checks for it before running anything. `run.sh`
 also refuses to run when the number of cases no longer matches the
 number written into it, because that number and the one in

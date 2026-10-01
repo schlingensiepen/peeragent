@@ -8,7 +8,7 @@ This file describes the plain-text templates, the JSON frame, the
 complete message vocabulary with the fields of each type, the
 `awaiting` values, the exit codes and the log files.
 
-It describes the output of both programs in version 0.1.0. How far
+It describes the output of both programs in version 0.2.0. How far
 each statement is backed by a run, and how far only by the two
 programs agreeing with each other, is recorded in
 [../MATURITY.md](../MATURITY.md).
@@ -210,7 +210,7 @@ Notes on the fields:
 
 | Type | Where it appears | Fields |
 |---|---|---|
-| `invocation` | first message of every log | `argv` (with `argv[0]` set to `peeragent`), `timestamp` (UTC, ISO 8601 with `Z`), `pid`, `cwd` |
+| `invocation` | first message of every log | `argv` (with `argv[0]` set to `peeragent`, and the value of every `--env` replaced by `<redacted>`), `timestamp` (UTC, ISO 8601 with `Z`), `pid`, `cwd` |
 | `env` | second message of every log | `impl`, `impl_version` (interpreter version), `peeragent_version`, `tmux`, `git`, `gh` (not called in this release, always `null`; the field stays because the git templates will fill it later), `vars` (object, redacted) |
 | `timing` | log, once per step; stdout with `--verbose` | `step`, `ms` |
 
@@ -338,6 +338,13 @@ complete even on a non-zero exit, because the emitter closes the
 array.
 
 ## Log files
+
+A value given with `--env` can be a secret, so the `invocation` record
+keeps the name and replaces the value: `PROBE=<redacted>`. Nothing else
+in `argv` is changed, and nothing outside `argv` is filtered - in
+particular, a harness that prints its own environment puts the value on
+its screen, and the captured screen goes into `lines` and into the log
+like any other screen content.
 
 Every invocation writes one log file.
 Its purpose is a single one: a tester who runs into a problem can
@@ -523,7 +530,7 @@ preflight before anything is copied:
 
 ```text
 [
-{"type":"version","version":"0.1.0","impl":"python","user_relevant":false}
+{"type":"version","version":"0.2.0","impl":"python","user_relevant":false}
 ]
 ```
 

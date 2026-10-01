@@ -117,7 +117,7 @@ reads the output; see [`../docs/output-format.md`](../docs/output-format.md).
 
 ## Step 4: answer the trust question
 
-peeragent does not answer for you in version 0.1.0. The hint of
+peeragent does not answer for you in version 0.2.0. The hint of
 the warning contains the whole command. For `agy` the answer is
 a bare `Enter`, because its dialog preselects "Yes, I trust this
 folder":

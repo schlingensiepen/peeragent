@@ -318,8 +318,9 @@ fixed string, print a banner in interactive mode, and then block.
 A variable selects the variant a case needs: normal, a trust
 question on the first screen, an immediate exit with an error
 line, a `--version` call that hangs, a `--version` call that
-fails, a ready marker padded with U+00A0, and a harness that
-disappears between the two captures. The absence of tmux is arranged by leaving it off the
+fails, a ready marker padded with U+00A0, a harness that
+disappears between the two captures, and one that refuses to start
+unless an argument and an environment variable reached it. The absence of tmux is arranged by leaving it off the
 `PATH`.
 
 A case is a directory `fixtures/<name>/` holding the argument line
@@ -401,6 +402,14 @@ does not take, nothing is lost, because the harness is running,
 which is what was asked for. Argv is always passed as separate
 arguments, never as one string.
 
+Variables from `--env` are given to that same call, one `-e` per
+variable. This is the only way they reach the harness: a session
+inherits the environment of the tmux *server*, and on a server that
+was already running that is the environment of whenever it started.
+A tmux that rejects the option ends the run rather than starting a
+harness without a variable it was told it would have, which is
+detected from what tmux says and not from its version number.
+
 A session exists exactly as long as the harness in it. If the
 harness dies, the session goes with it, and asking whether the
 session is there is how peeragent knows. What it does **not** get
@@ -432,11 +441,16 @@ bash -c 'pf=$1; shift; p=$(cat "$pf")
   while [ "${p%$'\r'}" != "$p" ] || [ "${p%$'\n'}" != "$p" ]; do
     p=${p%$'\r'}; p=${p%$'\n'}
   done
-  exec "$@" "$p"' _ <prompt-file> <launch_argv> <model_argv> <prompt_prefix_argv>
+  exec "$@" "$p"' _ <prompt-file> <launch_argv> <model_argv> <harness_args> <prompt_prefix_argv>
 ```
 
 The first argument is the absolute prompt file; after the shift
-the remaining arguments are the full harness argv. The prompt
+the remaining arguments are the full harness argv. `<harness_args>`
+are the values of `--harness-arg` in the order the caller gave them:
+after everything the handlers contribute and before the prompt
+prefix, so the prompt stays the last argument whatever the caller
+passed. The core does not look at them, which is why they need no
+place in the handler contract. The prompt
 content is read from the file by the wrapper and never passes
 through a shell level of the caller, so no quoting of the prompt
 is needed anywhere. Without a prompt file the argv is passed

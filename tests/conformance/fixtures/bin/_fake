@@ -15,6 +15,11 @@
 #               real interface pads it
 #   vanish      print a screen that matches no marker, survive the first
 #               capture and be gone before the second one
+#   needenv     refuse to start unless --sandbox was passed through and
+#               PROBE=expected arrived in the environment. Turns "the
+#               argument or the variable did not reach the harness" into a
+#               session that is gone, which the comparison can see - the
+#               captured screen itself is compared only by line count.
 #
 # The name it was invoked under decides the version string, so the
 # five fakes are symlinks to this one file.
@@ -70,6 +75,19 @@ BOX
     # marker comparison of one implementation until 2026-09-30.
     printf '%s\n' "$name ready"
     printf '\u276f\u00a0\n'
+    ;;
+  needenv)
+    missing=""
+    case " $* " in *" --sandbox "*) : ;; *) missing="argument --sandbox" ;; esac
+    if [ "${PROBE-}" != "expected" ]; then
+      missing="${missing:+$missing and }PROBE=expected"
+    fi
+    if [ -n "$missing" ]; then
+      printf '%s: did not receive %s\n' "$name" "$missing" >&2
+      exit 1
+    fi
+    printf '%s ready\n' "$name"
+    printf '%s\n' "> "
     ;;
   vanish)
     # No marker, so the caller captures a second time after two seconds.

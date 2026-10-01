@@ -10,7 +10,7 @@ installed harnesses and their model catalogs.
 This file is the reference for every subcommand, every flag, the
 preflight checks in their order, the message order and the exit
 codes.
-It describes what both programs do in version 0.1.0. How far each
+It describes what both programs do in version 0.2.0. How far each
 statement is backed by a run, and how far only by the two programs
 agreeing with each other, is recorded in
 [../MATURITY.md](../MATURITY.md).
@@ -184,7 +184,9 @@ the first screen and reports what the caller has to do next.
 peeragent start agent --folder <path> --harness <key>
                       [--prompt-file <path>] [--model <string>]
                       [--resume] [--git-repo]
-                      [--boot-wait <seconds>] [global flags]
+                      [--boot-wait <seconds>]
+                      [--harness-arg <arg>]... [--env <NAME=VALUE>]...
+                      [global flags]
 ```
 
 **Flags**
@@ -198,6 +200,56 @@ peeragent start agent --folder <path> --harness <key>
 | `--resume` | optional | Continue the harness session for this directory. What that means per harness, and which harnesses only support it experimentally, is in [harnesses.md](harnesses.md). |
 | `--git-repo` | optional | Run `git init -b main` in `<folder>` when it is not a git repository yet. No commit, no remote. |
 | `--boot-wait <seconds>` | optional | How long to wait after the start before the first capture. Whole number from 1 to 120, default 5. A replay under `--resume` can take longer than the default, so a higher value is useful there. |
+| `--harness-arg <arg>` | optional, repeatable | One argument for the harness, passed on unchanged. See below. |
+| `--env <NAME=VALUE>` | optional, repeatable | One environment variable for the session the harness runs in. See below. |
+
+**Passing arguments to the harness**
+
+`--harness-arg` appends one argument to the harness's command line. It
+may be given several times, and the order is kept. The arguments land
+after everything peeragent puts there itself - the harness binary, a
+resume flag, a model flag - and before the prompt, so a harness that
+takes the prompt as an argument still finds it last.
+
+The value is passed on as one argument, unread. peeragent does not
+check it against the harness, does not split it and does not quote it:
+it holds no list of any harness's flags, and a list it held would be a
+claim about someone else's program that the next release could falsify.
+Consequences of a wrong argument are the harness's to report, and they
+show up in the captured screen.
+
+Use it for anything the harness understands and peeragent does not
+model - a sandbox switch, an extra directory, a configuration override.
+`peeragent list harness` does not tell you what a harness accepts; its
+own `--help` does.
+
+**Passing environment variables**
+
+`--env NAME=VALUE` sets a variable for the session the harness runs in.
+It may be given several times. The name must be usable as a variable
+name; the value is taken as it stands, including equals signs, and may
+be empty.
+
+This exists because of how tmux works, and it is worth knowing even if
+you never use the flag. **A harness started in a tmux session inherits
+the environment of the tmux server, not of whoever called peeragent.**
+If a server is already running - the normal case when you work inside
+tmux yourself - it was started at some earlier point, with the
+environment of that moment, and every session created in it afterwards
+gets that one. A variable you export before calling peeragent does not
+reach the harness. Measured on 2026-10-01: without `--env` the harness
+saw the server's value, with `--env` the caller's.
+
+Two limits:
+
+- A tmux that does not accept the option ends the run with exit code 3
+  rather than starting a harness without the variable it was promised.
+- The value is kept out of peeragent's own records: the invocation line
+  in the log shows `NAME=<redacted>`. It cannot be kept off the screen.
+  If the harness prints its own environment, the value is in the
+  captured pane like everything else there, and the captured pane goes
+  into `lines` and into the log. Logs are worth reading before you
+  attach them to anything.
 
 **What the working directory decides**
 
@@ -356,7 +408,26 @@ The harness keeps running in tmux after peeragent returns, on its
  are in [../README.md](../README.md).
 peeragent never ends a session, under any circumstances. It holds no
 session without a harness in it, so there is nothing for it to clean
-up.
+up, and there is no option that stops a session after a while - not
+an omission, a limit on purpose. A tool whose whole job is starting
+something should not be the thing that kills it, and a deadline inside
+peeragent would have to outlive the call that set it.
+
+A caller that needs a run to stop after a fixed time keeps that
+deadline itself. The session name peeragent reports is all it takes:
+
+```bash
+session=$(peeragent start agent --folder "$dir" --harness claude \
+            --prompt-file "$dir/task.md" --json \
+            | sed -n 's/.*"type":"agent.started","session":"\([^"]*\)".*/\1/p')
+sleep 600
+tmux kill-session -t "=$session"
+```
+
+The `=` in front of the name is not decoration: without it tmux
+matches a prefix, and a prefix can name a session somebody else is
+working in. Name the session exactly, one at a time, and never
+`kill-server`.
 
 **Output**
 

@@ -1,6 +1,6 @@
 # Maturity
 
-**Report date:** 2026-10-01 · **peeragent version:** 0.1.0
+**Report date:** 2026-10-01 · **peeragent version:** 0.2.0
 
 Both command-line programs are in this repository:
 `tools/peeragent.py` (Python, standard library only) and
@@ -10,12 +10,13 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  57 cases and compares them with each other. All 57 agree
+  61 cases and compares them with each other. All 61 agree
   (2026-10-01). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
-  passes. Eight cases start a fake harness in tmux, one of them a
-  harness that exits at once and one that disappears between the two
-  captures; no case calls `send`, and no case uses a
+  passes. Nine cases start a fake harness in tmux, one of them a
+  harness that exits at once, one that disappears between the two
+  captures and one that refuses to start unless an argument and a
+  variable reached it; no case calls `send`, and no case uses a
   real harness. The log files are compared for every case, by the
   sequence of message types they hold. This count and the one in
   `tests/conformance/README.md` are the only two; `run.sh` refuses to
@@ -24,13 +25,13 @@ document keeps them apart:
   hosted machines, which is what shows the result does not depend on
   one person's setup. It has run on every push since 2026-09-29, and
   every completed run passed. Since 2026-10-01 it runs on two images,
-  so the 57 cases have now agreed across three environments:
+  so the cases have now agreed across three environments:
 
   | Where | bash | Python | tmux | Result |
   |---|---|---|---|---|
-  | development host | 5.2.37 | 3.13.5 | 3.5a | 57 of 57 |
-  | Ubuntu 24.04 (`ubuntu-latest`) | 5.2.21 | 3.12.3 | 3.4 | 57 of 57 |
-  | Ubuntu 26.04 | 5.3.9 | 3.14.4 | 3.6 | 57 of 57 |
+  | development host | 5.2.37 | 3.13.5 | 3.5a | 61 of 61 |
+  | Ubuntu 24.04 (`ubuntu-latest`) | 5.2.21 | 3.12.3 | 3.4 | 57 of 57 (2026-10-01) |
+  | Ubuntu 26.04 | 5.3.9 | 3.14.4 | 3.6 | 57 of 57 (2026-10-01) |
 
   The third row is the one the floating `ubuntu-latest` label moves to
   on 2026-10-19; naming it now means that date has already been
@@ -68,7 +69,7 @@ here ages, and the ones marked `tested` age with the date they carry.
 
 ## Overall state
 
-peeragent 0.1.0 is a pre-release. Its command set is implemented in
+peeragent 0.2.0 is a pre-release. Its command set is implemented in
 two programs that agree with each other on every conformance case.
 Run against real harnesses, it has been taken as far as the first
 screen for all five, and through a trust answer, a deferred delivery
@@ -127,6 +128,17 @@ cases, `duplicate` against a real session history with a replay in the
 copy, and exit code 130 after an interrupt during the boot wait. Exit
 code 4 is covered by a conformance case with a stand-in that exits at
 once.
+
+Exercised on 2026-10-01, both programs, against a stand-in harness that
+refuses to start unless it receives them: `--harness-arg` reaches the
+harness's command line in the order given and before the prompt, and
+`--env` reaches the harness even when the session is created on a tmux
+server that does not carry the variable (`tested`). The same run showed
+the value kept out of peeragent's own records and present in the
+captured screen, because that stand-in prints its environment
+(`observed`). Neither option has been used with a real harness through
+these programs, so what a real harness does with an argument it does
+not know is `unverified`.
 
 Still not exercised against a real harness: `--resume` for the Codex
 CLI, OpenCode and the Copilot CLI, each of which needs a session to
@@ -226,7 +238,7 @@ means of its own.
 | `duplicate` for `agy` | The session store layout is unknown; only a summary database has been seen, and credentials live in the system keyring | Copy the folder yourself with `cp -a` and start a fresh session there |
 | `duplicate` for `opencode` | Its database carries no schema marker and mixes authentication tables into the same file | Copy the folder yourself with `cp -a` and start a fresh session there |
 | Answering a trust, login or provider question | A tool that answers a trust question on your behalf decides about file access for you | peeragent reports the waiting state and the key sequence that answers it; send it yourself, then hand the prompt over with `peeragent send` |
-| Git templates and remote repositories | Only a local repository is in scope for 0.1.0 | `--git-repo` creates a local repository in an empty working directory |
+| Git templates and remote repositories | Only a local repository is in scope for 0.2.0 | `--git-repo` creates a local repository in an empty working directory |
 
 A refusal is a preflight failure with exit code 2 and a hint naming
 the alternative. It happens before anything is copied.
@@ -338,13 +350,24 @@ the alternative. It happens before anything is copied.
   from the harness. A model missing from a catalog can still be
   used: pass it with `--model`.
 - Linux and WSL2 only. There is no macOS and no native Windows
-  support, and none is planned for 0.1.0.
+  support, and none is planned for 0.2.0.
 - Logs are written once per invocation and never rotated, bundled or
   trimmed. They contain the text of your launch prompt, the captured
   pane content and absolute paths.
 - A screen is a snapshot. While a harness streams its answer, the
   state cannot always be told from one capture, which is why
   peeragent captures twice before it calls a screen unclassified.
+- **`--env` keeps a value out of peeragent's records, not off the
+  screen.** The invocation line in the log shows `NAME=<redacted>`. If
+  the harness prints its own environment, the value is in the captured
+  pane, and the captured pane goes into `lines` and into the log. There
+  is no way for peeragent to tell a secret from any other text on a
+  screen it did not write.
+- **An argument passed with `--harness-arg` is not checked.** peeragent
+  holds no list of any harness's flags. A wrong argument is the
+  harness's to complain about, and the complaint arrives as whatever it
+  prints - which may be a screen peeragent classifies as
+  unrecognised rather than as an error.
 - **The wording of `msg` and `hint` is not part of the equivalence.**
   Both programs emit the same message types with the same fields in
   the same order, and the conformance test holds them to that. The

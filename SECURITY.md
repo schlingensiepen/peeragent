@@ -34,5 +34,5 @@ broken.
 
 ## Supported versions
 
-Version 0.1.0 is the only version, and it is a pre-release. There are
-no backports.
+The newest version is the only one that gets fixes, and it is still a
+pre-release. There are no backports to 0.1.0.

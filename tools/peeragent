@@ -28,7 +28,7 @@ if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4))); 
   exit 1
 fi
 
-PEERAGENT_VERSION="0.1.0"
+PEERAGENT_VERSION="0.2.0"
 PEERAGENT_IMPL="bash"
 PEERAGENT_PID=$$
 
@@ -99,6 +99,8 @@ ARG_PROMPT_FILE=""
 ARG_MODEL=""
 ARG_SESSION=""
 ARG_FROM=""
+declare -a ARG_HARNESS_ARGS=()
+declare -a ARG_ENV=()
 ARG_TO=""
 ARG_RESUME=0
 ARG_GIT_REPO=0
@@ -452,10 +454,37 @@ log_open() {
   return 0
 }
 
+# A value handed to --env can be a secret, and the invocation record goes
+# into the log file. The name stays, because it is what makes a failed run
+# readable; the value is replaced. Nothing else in argv is touched - a
+# prompt file is named by path, not by content.
+redact_env_values() {
+  local -a out=()
+  local i=0 n=$# a
+  local -a in=("$@")
+  while ((i < n)); do
+    a=${in[i]}
+    out+=("$a")
+    if [[ $a == "--env" ]] && ((i + 1 < n)); then
+      if [[ ${in[i+1]} == *"="* ]]; then
+        out+=("${in[i+1]%%=*}=<redacted>")
+      else
+        out+=("${in[i+1]}")
+      fi
+      i=$((i + 2))
+      continue
+    fi
+    i=$((i + 1))
+  done
+  REDACTED=("${out[@]}")
+}
+declare -a REDACTED=()
+
 emit_invocation() {
   local stamp
   stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) || stamp=""
-  json_arr peeragent ${INVOCATION_ARGS[@]+"${INVOCATION_ARGS[@]}"}
+  redact_env_values ${INVOCATION_ARGS[@]+"${INVOCATION_ARGS[@]}"}
+  json_arr peeragent ${REDACTED[@]+"${REDACTED[@]}"}
   emit invocation "argv=r:$JA" timestamp=s:"$stamp" pid=n:"$PEERAGENT_PID" \
     cwd=s:"$PWD"
 }
@@ -1386,20 +1415,40 @@ create_session() {
   local folder=$1 key=$2
   shift 2
   local -a argv=("$@")
+  local -a ENV_ARGS=()
+  local kv
+  for kv in ${ARG_ENV[@]+"${ARG_ENV[@]}"}; do
+    ENV_ARGS+=(-e "$kv")
+  done
   local attempt sess created=0
   session_slug "$folder"
   local slug=$SLUG
   for ((attempt = 1; attempt <= SESSION_ATTEMPTS; attempt++)); do
     rand_hex8
     sess="peeragent-$slug-$key-$HEX8"
+    # A harness started in tmux inherits the environment of the tmux
+    # *server*, not of whoever called peeragent. On a server that has been
+    # running since yesterday that environment is yesterday's. -e puts the
+    # variable into this session, whichever server it lands in.
     tmux_run new-session -d -s "$sess" -c "$folder" \
-      -x "$PANE_WIDTH" -y "$PANE_HEIGHT" "${argv[@]}"
+      -x "$PANE_WIDTH" -y "$PANE_HEIGHT" \
+      ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} "${argv[@]}"
     if ((RUN_RC == 0)); then
       created=1
       break
     fi
     if [[ $RUN_ERR == *"duplicate session"* ]]; then
       continue
+    fi
+    # Feature detection by what tmux says, not by its version number: a
+    # version comparison would be one more thing claiming to know
+    # something. Better to say the variables did not arrive than to start a
+    # harness that is missing what it was told it would have.
+    if ((${#ENV_ARGS[@]} > 0)) \
+       && { [[ ${RUN_ERR,,} == *"unknown flag"* ]] \
+            || [[ ${RUN_ERR,,} == *"usage:"* ]]; }; then
+      fatal 3 "this tmux does not accept environment variables on new-session" \
+        "upgrade tmux, or start the harness on a tmux server that already carries the variables and leave --env out"
     fi
     fatal 1 "could not create the tmux session" \
       "tmux refused to create the session: ${RUN_ERR:-no error output}; check that the tmux server is reachable"
@@ -1520,6 +1569,11 @@ collect_children() {
 # The prompt text is always the last argv element. One generic wrapper
 # reads the file and execs the harness, so the prompt passes through no
 # shell level and needs no quoting.
+# Whatever the caller named with --harness-arg goes in after everything
+# peeragent puts there itself and before the prompt, so the prompt stays the
+# last argument. The values are not read and not rewritten: peeragent does
+# not know this harness's flags, and pretending to would be the part that
+# goes stale.
 build_launch_argv() {
   local key=$1 folder=$2 resume=$3 model=$4 prompt_file=$5
   local -a launch=() marg=() prefix=()
@@ -1537,9 +1591,12 @@ build_launch_argv() {
         p=${p%$'"'"'\r'"'"'}; p=${p%$'"'"'\n'"'"'}
       done
       exec "$@" "$p"' _ "$prompt_file"
-      ${launch[@]+"${launch[@]}"} ${marg[@]+"${marg[@]}"} ${prefix[@]+"${prefix[@]}"})
+      ${launch[@]+"${launch[@]}"} ${marg[@]+"${marg[@]}"} \
+      ${ARG_HARNESS_ARGS[@]+"${ARG_HARNESS_ARGS[@]}"} \
+      ${prefix[@]+"${prefix[@]}"})
   else
-    LAUNCH_ARGV=(${launch[@]+"${launch[@]}"} ${marg[@]+"${marg[@]}"})
+    LAUNCH_ARGV=(${launch[@]+"${launch[@]}"} ${marg[@]+"${marg[@]}"} \
+      ${ARG_HARNESS_ARGS[@]+"${ARG_HARNESS_ARGS[@]}"})
   fi
   return 0
 }
@@ -2190,8 +2247,16 @@ Usage:
   peeragent start agent --folder <path> --harness <key>
                         [--prompt-file <path>] [--model <string>]
                         [--resume] [--git-repo] [--boot-wait <seconds>]
+                        [--harness-arg <arg>]... [--env <NAME=VALUE>]...
   peeragent send --session <name> --prompt-file <path> [--wait <seconds>]
   peeragent duplicate --from <src> --to <dst> --harness <key>
+
+start agent flags, repeatable:
+  --harness-arg <arg>   pass this argument to the harness unchanged, after
+                        peeragent's own arguments and before the prompt
+  --env <NAME=VALUE>    set this variable in the session, so the harness gets
+                        it rather than the tmux server's copy. The value is
+                        kept out of the log and the output
 
 Global flags:
   --json                one JSON object per message inside a JSON array
@@ -2235,6 +2300,23 @@ check_int_range() {
   if [[ ! $v =~ ^[0-9]+$ ]] || ((10#$v < lo || 10#$v > hi)); then
     fatal 2 "flag $flag expects a whole number between $lo and $hi, got: $v" \
       "pass a value in that range, for example '$flag $lo'"
+  fi
+  return 0
+}
+
+# NAME=VALUE, the first equals sign separating the two. The name has to be
+# usable as a variable name; the value is passed on untouched and may
+# contain anything, equals signs included.
+check_env_assignment() {
+  local text=$1 name
+  if [[ $text != *"="* ]]; then
+    fatal 2 "--env expects NAME=VALUE, got: $text" \
+      "write the assignment in one argument, for example '--env PROBE=1'"
+  fi
+  name=${text%%=*}
+  if [[ ! $name =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    fatal 2 "--env name is not usable as a variable name: $name" \
+      "use letters, digits and underscores, and do not start with a digit"
   fi
   return 0
 }
@@ -2300,6 +2382,19 @@ parse_args() {
         need_value "$a" ${2+"$2"}
         ARG_TO=$2
         SEEN_FLAG[to]=1
+        shift
+        ;;
+      --harness-arg)
+        need_value "$a" ${2+"$2"}
+        ARG_HARNESS_ARGS+=("$2")
+        SEEN_FLAG[harness-arg]=1
+        shift
+        ;;
+      --env)
+        need_value "$a" ${2+"$2"}
+        check_env_assignment "$2"
+        ARG_ENV+=("$2")
+        SEEN_FLAG[env]=1
         shift
         ;;
       --resume)
@@ -2405,7 +2500,7 @@ check_flag_scope() {
   case $CMD in
     version | list-harness | list-git-templates) allowed="" ;;
     list-models) allowed="harness" ;;
-    start-agent) allowed="folder harness prompt-file model resume git-repo boot-wait" ;;
+    start-agent) allowed="folder harness prompt-file model resume git-repo boot-wait harness-arg env" ;;
     send) allowed="session prompt-file wait" ;;
     duplicate) allowed="from to harness" ;;
     *) allowed="" ;;

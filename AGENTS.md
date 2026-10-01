@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**State:** peeragent 0.1.0 is a pre-release. Both programs are in
+**State:** peeragent 0.2.0 is a pre-release. Both programs are in
 this repository, `tools/peeragent.py` and `tools/peeragent`, and they
 run. What has been checked, and how, is in
 [MATURITY.md](MATURITY.md). Read step 1 before you go on, and promise
@@ -16,7 +16,7 @@ are.
 Read [MATURITY.md](MATURITY.md) before anything else.
 
 The core state, repeated here so that you know it without following
-the link: peeragent 0.1.0 is a pre-release. Both programs are in this
+the link: peeragent 0.2.0 is a pre-release. Both programs are in this
 repository and run.
 On 2026-09-29 both were started against all five real harnesses on a
 test host and reported a first screen; a complete path with a trust

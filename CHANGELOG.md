@@ -4,6 +4,39 @@ All notable changes to peeragent are recorded here.
 The format follows Keep a Changelog, and the version numbers follow
 Semantic Versioning.
 
+## [0.2.0] - Unreleased
+
+Two options a caller asked for, after a project tried to start eleven
+agents at once and found what was missing. Nothing existing changed its
+behaviour.
+
+### Added
+
+- `--harness-arg <arg>` on `start agent`, repeatable: the argument is
+  appended to the harness's command line unchanged, after the arguments
+  peeragent sets itself and before the prompt, so the prompt stays the
+  last argument. The values are not read, not rewritten and not checked
+  against the harness - peeragent does not know a harness's flags, and
+  pretending to would be the part that goes stale.
+- `--env <NAME=VALUE>` on `start agent`, repeatable: the variable is set
+  in the new session through tmux, so the harness gets the caller's value
+  rather than the tmux server's. Without it a harness started on a server
+  that has been running since yesterday inherits yesterday's environment;
+  that was measured, not assumed. The value is kept out of peeragent's
+  own records, and a tmux that refuses the option is an error rather than
+  a silent start without the variable.
+
+### Not added, on purpose
+
+- No option that answers a trust prompt. The key sequence peeragent
+  knows describes someone else's interface on a particular day, and the
+  cost of being wrong is a dialog whose preselected answer, for one
+  harness, ends the session. Two routes that do not depend on peeragent
+  being right are described in [docs/harnesses.md](docs/harnesses.md).
+- No option that stops a session after a while. peeragent ends no
+  session and no harness, under any circumstances; a caller that needs a
+  deadline keeps it itself. [docs/cli.md](docs/cli.md) says how.
+
 ## [0.1.0] - 2026-10-01
 
 First release, and a pre-release: both programs are in this

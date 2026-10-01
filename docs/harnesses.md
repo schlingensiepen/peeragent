@@ -52,6 +52,44 @@ All five catalogs carry the same date: **2026-08-16**. They are
 reproduced per harness below and are what `peeragent list models`
 prints.
 
+## Starting a harness that nobody will answer
+
+peeragent recognises a trust prompt and names the key sequence that
+answers it, and it does not press that key. The sequence describes
+somebody else's interface on a particular day; for `claude` the
+preselected answer is the refusal, so a key sent at the wrong moment
+ends the session instead of starting work. A caller who presses it
+knowing the risk is on solid ground; a tool that presses it for every
+start would be betting the run on a dialog it last saw weeks ago.
+
+For a run where nobody is watching, two routes avoid the dialog
+instead of answering it. Both depend on the harness, not on peeragent
+being right about a screen.
+
+- **Give the harness its own home and mark the directory trusted
+  before the start.** Every harness keeps that state in a file under
+  its configuration directory. Point the harness at a configuration
+  directory of this run, write the trust state into it, and the dialog
+  does not appear. This is the route that keeps working when the
+  dialog's wording changes. The variable that moves that directory is
+  named below for `claude`, `codex` and the Copilot CLI; for `agy` and
+  OpenCode peeragent does not record one, so find it in their own
+  documentation before relying on this route.
+- **Pass the harness's own switch for it.** Each of the five has a
+  flag that approves tool use without asking, and some have one for
+  additional directories. Read the flag off the harness's own `--help`
+  on the machine that will run it - these flags are renamed and
+  withdrawn between releases, which is why peeragent does not keep a
+  list of them - and hand it over with `--harness-arg`. What such a
+  flag switches off is the harness's safety question before it writes
+  or runs something; that is the caller's decision to make, and it is
+  made per run, not once in a tool.
+
+Variables that the harness has to see at startup belong in `--env`,
+not in the shell that calls peeragent: a harness in tmux inherits the
+tmux server's environment, not the caller's.
+[cli.md](cli.md) has the detail.
+
 ## Overview
 
 | Key | Product | Binary | Prompt delivery | Resume | Duplicate | Trust answer | Version string seen 2026-09-23 |

@@ -18,7 +18,7 @@ harness.
 
 ## Maturity
 
-peeragent 0.1.0 is a pre-release: both programs are in this
+peeragent 0.2.0 is a pre-release: both programs are in this
 repository and run. They were started against all five real
 harnesses on 2026-09-29, and the two agree with each other on every
 conformance case in this repository, which shows equivalence and not

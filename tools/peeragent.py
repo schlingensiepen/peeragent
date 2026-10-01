@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-PEERAGENT_VERSION = "0.1.0"
+PEERAGENT_VERSION = "0.2.0"
 IMPL_NAME = "python"
 
 HARNESS_ORDER = ["claude", "codex", "agy", "opencode", "copilot"]
@@ -927,7 +927,16 @@ def has_session(name: str) -> bool:
     return cp is not None and cp.returncode == 0
 
 
-def create_session(name: str, folder: str, argv: list[str]) -> tuple[bool, str]:
+def tmux_rejected_env(stderr: str) -> bool:
+    # Feature detection by what tmux says, not by its version number: -e on
+    # new-session is old enough that no supported tmux should lack it, and a
+    # version comparison would be one more thing claiming to know something.
+    low = stderr.lower()
+    return "unknown flag" in low or "usage:" in low
+
+
+def create_session(name: str, folder: str, argv: list[str],
+                    env: Optional[list[tuple[str, str]]] = None) -> tuple[bool, str]:
     """One call starts the session with the harness in it.
 
     Mouse mode is turned on afterwards, for the person who attaches. It
@@ -943,9 +952,16 @@ def create_session(name: str, folder: str, argv: list[str]) -> tuple[bool, str]:
     never needed it: if the harness dies, the session is gone, and
     asking whether it exists is enough to say so.
     """
+    # A harness started in tmux inherits the environment of the tmux
+    # *server*, not of whoever called peeragent. On a server that has been
+    # running since yesterday that environment is yesterday's. -e puts the
+    # variable into this session, whichever server it lands in.
+    env_args: list[str] = []
+    for name_, value in env or []:
+        env_args += ["-e", f"{name_}={value}"]
     cp = run_tmux([
         "new-session", "-d", "-s", name, "-c", folder,
-        "-x", "200", "-y", "50", *argv,
+        "-x", "200", "-y", "50", *env_args, *argv,
     ])
     if cp is None or cp.returncode != 0:
         stderr = decode(cp.stderr) if cp is not None else "tmux did not respond"
@@ -956,11 +972,21 @@ def create_session(name: str, folder: str, argv: list[str]) -> tuple[bool, str]:
     return True, ""
 
 def create_session_with_retry(base_name: str, harness: str, folder: str, argv: list[str],
-                                emitter: Emitter, max_attempts: int = 5) -> str:
+                                emitter: Emitter, max_attempts: int = 5,
+                                env: Optional[list[tuple[str, str]]] = None) -> str:
     for attempt in range(max_attempts):
         suffix = new_hex_suffix()
         name = f"{base_name}-{harness}-{suffix}"
-        ok, stderr = create_session(name, folder, argv)
+        ok, stderr = create_session(name, folder, argv, env)
+        if not ok and env and tmux_rejected_env(stderr):
+            # Better to say the variables did not arrive than to start a
+            # harness that is missing what it was told it would have.
+            emitter.fatal(
+                "this tmux does not accept environment variables on new-session",
+                "upgrade tmux, or start the harness on a tmux server that "
+                "already carries the variables and leave --env out",
+                3,
+            )
         if ok:
             return name
         if "duplicate session" in stderr:
@@ -1356,6 +1382,12 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
     argv = handler.launch_argv(folder, ns.resume)
     if ns.model:
         argv += handler.model_argv(ns.model)
+    # Whatever the caller named, in the order they named it, after everything
+    # peeragent puts there itself and before the prompt. The values are not
+    # read, not rewritten and not checked against the harness: peeragent does
+    # not know this harness's flags, and pretending to would be the part that
+    # goes stale.
+    argv += ns.harness_arg
     if prompt_content is not None and handler.prompt_delivery == "argv":
         argv += handler.prompt_prefix_argv()
         # Trailing newlines are stripped on both delivery paths. On the
@@ -1380,7 +1412,8 @@ def cmd_start_agent(emitter: Emitter, ns) -> int:
 
     base_name = f"peeragent-{session_basename(folder)}"
     with Stopwatch(emitter, "tmux-create"):
-        session = create_session_with_retry(base_name, handler.key, folder, argv, emitter)
+        session = create_session_with_retry(base_name, handler.key, folder, argv,
+                                             emitter, env=ns.env)
 
     with Stopwatch(emitter, "boot-wait"):
         time.sleep(ns.boot_wait)
@@ -1705,10 +1738,18 @@ Usage:
   peeragent list models [--harness <key>] [--json]
   peeragent start agent --folder <path> --harness <key> [--prompt-file <path>]
                          [--model <string>] [--resume] [--git-repo]
-                         [--boot-wait <seconds>] [--json]
+                         [--boot-wait <seconds>] [--harness-arg <arg>]...
+                         [--env <NAME=VALUE>]... [--json]
   peeragent send --session <name> --prompt-file <path> [--wait <seconds>] [--json]
   peeragent duplicate --from <path> --to <path> --harness <key> [--json]
   peeragent version [--json]
+
+start agent flags, repeatable:
+  --harness-arg <arg>  pass this argument to the harness unchanged, after
+                       peeragent's own arguments and before the prompt
+  --env <NAME=VALUE>   set this variable in the session, so the harness gets
+                       it rather than the tmux server's copy. The value is
+                       kept out of the log and the output
 
 Global flags:
   --json            JSONL output instead of plain text
@@ -1724,14 +1765,18 @@ See docs/cli.md for the full reference.
 GLOBAL_FLAGS_NO_ARG = {"--json", "--no-log", "--verbose", "--no-color"}
 GLOBAL_FLAGS_ARG = {"--log-file", "--boot-wait", "--wait"}
 SUB_FLAGS_NO_ARG = {"--resume", "--git-repo"}
-SUB_FLAGS_ARG = {"--folder", "--harness", "--model", "--prompt-file", "--session", "--from", "--to"}
+SUB_FLAGS_ARG = {"--folder", "--harness", "--model", "--prompt-file", "--session",
+                 "--from", "--to", "--harness-arg", "--env"}
+# Repeatable: every occurrence adds to a list instead of replacing the
+# previous value, so the order the caller wrote them in is kept.
+SUB_FLAGS_REPEATABLE = {"--harness-arg", "--env"}
 
 APPLICABLE_FLAGS = {
     "list_harness": set(),
     "list_models": {"--harness"},
     "list_git_templates": set(),
     "start_agent": {"--folder", "--harness", "--model", "--prompt-file", "--resume",
-                     "--git-repo", "--boot-wait"},
+                     "--git-repo", "--boot-wait", "--harness-arg", "--env"},
     "send": {"--session", "--prompt-file", "--wait"},
     "duplicate": {"--from", "--to", "--harness"},
     "version": set(),
@@ -1742,6 +1787,8 @@ class Namespace:
     def __init__(self):
         self.json = False
         self.no_log = False
+        self.harness_arg: list[str] = []
+        self.env: list[tuple[str, str]] = []
         self.log_file = None
         self.verbose = False
         self.no_color = False
@@ -1776,6 +1823,26 @@ def determine_action(subcommand: Optional[str], subaction: Optional[str]) -> Opt
     if subcommand in ("send", "duplicate", "version") and subaction is None:
         return subcommand
     return None
+
+
+def parse_env_assignment(emitter: Emitter, text: str) -> tuple[str, str]:
+    # NAME=VALUE, with the first equals sign separating the two. The name has
+    # to be a name a shell can export; the value is passed on untouched and
+    # may contain anything, equals signs included.
+    name, sep, value = text.partition("=")
+    if not sep:
+        emitter.fatal(
+            f"--env expects NAME=VALUE, got: {name}",
+            "write the assignment in one argument, for example '--env PROBE=1'",
+            2,
+        )
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
+        emitter.fatal(
+            f"--env name is not usable as a variable name: {name}",
+            "use letters, digits and underscores, and do not start with a digit",
+            2,
+        )
+    return name, value
 
 
 def _require_nonempty(emitter: Emitter, flag: str, value: str) -> str:
@@ -1852,6 +1919,10 @@ def parse_argv(argv: list[str], emitter: Emitter) -> tuple[str, Namespace]:
                 ns.from_ = value
             elif tok == "--to":
                 ns.to = value
+            elif tok == "--harness-arg":
+                ns.harness_arg.append(value)
+            elif tok == "--env":
+                ns.env.append(parse_env_assignment(emitter, value))
             i += 2
         elif tok.startswith("-"):
             emitter.fatal(f"unknown argument: {tok}", "run 'peeragent --help' for usage", 2)
@@ -1965,10 +2036,28 @@ def default_log_path(action_token: str) -> str:
     )
 
 
+def redact_env_values(argv: list[str]) -> list[str]:
+    # A value handed to --env can be a secret, and the invocation record goes
+    # into the log file. The name stays, because it is what makes a failed run
+    # readable; the value is replaced. Nothing else in argv is touched - a
+    # prompt file is named by path, not by content.
+    out: list[str] = []
+    i = 0
+    while i < len(argv):
+        out.append(argv[i])
+        if argv[i] == "--env" and i + 1 < len(argv):
+            name, sep, _ = argv[i + 1].partition("=")
+            out.append(f"{name}=<redacted>" if sep else argv[i + 1])
+            i += 2
+            continue
+        i += 1
+    return out
+
+
 def build_invocation(argv: list[str], timestamp: datetime) -> dict:
     return {
         "type": "invocation",
-        "argv": ["peeragent"] + argv,
+        "argv": ["peeragent"] + redact_env_values(argv),
         "timestamp": timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "pid": os.getpid(),
         "cwd": os.getcwd(),

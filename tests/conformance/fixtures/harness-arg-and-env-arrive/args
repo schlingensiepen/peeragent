@@ -1,0 +1,1 @@
+start agent --folder @SANDBOX@/w --harness claude --prompt-file @SANDBOX@/p.txt --harness-arg --sandbox --env PROBE=expected --boot-wait 2 --json

@@ -58,7 +58,11 @@ anywhere else, the handler contract is the wrong shape for it; raise
 that in an issue first.
 
 Do not change the version constant `PEERAGENT_VERSION` in a feature
-change. It stays `0.1.0` until a release.
+change. It is raised once, when a release is prepared, and then it has
+to match the newest heading in [CHANGELOG.md](CHANGELOG.md) and the
+version named in the documents - the two programs, the changelog and
+`MATURITY.md` disagreeing about which version this is has happened and
+is worth one grep before a release.
 
 ## Running the conformance test
 
@@ -84,7 +88,7 @@ means before you trust a green run: a mistake both programs make in
 the same way passes. A green run is evidence of equivalence, never of
 correctness. Correctness comes from reading the description and from
 running a real harness. Also know what it does not reach today: no
-case calls `send`, and no case uses a real harness. Eight do start a
+case calls `send`, and no case uses a real harness. Nine do start a
 fake one in tmux; `tests/conformance/README.md` has the current
 figures, and the log files are compared for every case.
 
@@ -103,7 +107,7 @@ name says what is covered. Files in it:
 | `argv` | one argument per line, not split, instead of `args`. Needed for an argument that is empty or holds a space |
 | `mode` | `json` (default), `plain`, or `help`: how the outputs are compared |
 | `path` | `fakes` (default), `bare` to leave the fake harnesses out, or `notmux` to hide tmux as well |
-| `env` | extra variables, one `KEY=VALUE` per line; `PEERAGENT_FAKE` selects the behaviour of the fake harnesses (`trust`, `exit`, `hang`, `noversion`, `padded`, `vanish`) |
+| `env` | extra variables, one `KEY=VALUE` per line; `PEERAGENT_FAKE` selects the behaviour of the fake harnesses (`trust`, `exit`, `hang`, `noversion`, `padded`, `vanish`, `needenv`) |
 | `home/` | a skeleton copied into the sandbox `HOME` before the run |
 | `setup.sh` | run first with `SANDBOX` and `HOME` set, for anything whose name depends on the sandbox path, such as a session store |
 

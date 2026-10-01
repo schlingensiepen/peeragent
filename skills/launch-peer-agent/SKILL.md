@@ -66,7 +66,7 @@ checkout of the peeragent repository.
 - **Task file** — the file in the working directory that the
   pointer prompt names.
 - **Git template** — a described way of creating a repository for
-  the working directory. Version 0.1.0 covers the local kind
+  the working directory. Version 0.2.0 covers the local kind
   only; see [`docs/cli.md`](../../docs/cli.md).
 
 ## Choose the implementation
@@ -99,6 +99,23 @@ is to work in, and pass exactly that one. The launched harness
 inherits nothing from you: not your own current directory, not the
 directory you wrote the task file into. It starts where you point
 it.
+
+It does not inherit your environment either, and this one surprises
+people: a harness in tmux gets the environment of the tmux *server*,
+which on a server that has been running for a while is the environment
+of whenever it started. Exporting a variable before you call peeragent
+does not reach the peer agent. If it needs one - a token for a service
+it talks to, a switch its own configuration reads - pass
+`--env NAME=VALUE`, once per variable. The value stays out of
+peeragent's log; it does not stay off the screen if the harness prints
+it.
+
+If the harness needs a flag peeragent does not model, pass it with
+`--harness-arg`, once per argument. peeragent hands it over unread, so
+check the harness's own `--help` on the machine that will run it. Do
+not guess a flag from memory: these are renamed between releases, and
+a flag that no longer exists usually means the harness prints a usage
+text instead of starting, which arrives as an unrecognised screen.
 
 Point it at the project itself, not at the folder above it. A
 parent directory is the mistake that costs the most, because
@@ -236,11 +253,11 @@ message.
 | `auth_prompt` | The harness is not logged in. | Tell the user. The login is external and interactive; peeragent does not automate it. |
 | `provider_prompt` | The harness needs a model provider configured. | Tell the user. For `opencode` this is `/connect` inside the harness. |
 | `unknown` | No known pattern matched. | Show the user the captured lines and ask how to proceed. Send no key sequence: for `codex`, `unknown` is also the update dialog, whose preselected option runs a global package install. |
-| `error` | Reserved, not used in version 0.1.0. | A harness that died reports `agent.exited` instead. There is nothing in the log to read about it: the session went with the harness. Tell the user, and run the same harness by hand if the reason matters. |
+| `error` | Reserved, not used in version 0.2.0. | A harness that died reports `agent.exited` instead. There is nothing in the log to read about it: the session went with the harness. Tell the user, and run the same harness by hand if the reason matters. |
 
 ### Answering a trust prompt
 
-peeragent does not answer trust prompts itself in version 0.1.0.
+peeragent does not answer trust prompts itself in version 0.2.0.
 It reports the key sequence in the hint of its warning, and you
 send it:
 
