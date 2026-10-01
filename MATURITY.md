@@ -30,8 +30,8 @@ document keeps them apart:
   | Where | bash | Python | tmux | Result |
   |---|---|---|---|---|
   | development host | 5.2.37 | 3.13.5 | 3.5a | 61 of 61 |
-  | Ubuntu 24.04 (`ubuntu-latest`) | 5.2.21 | 3.12.3 | 3.4 | 57 of 57 (2026-10-01) |
-  | Ubuntu 26.04 | 5.3.9 | 3.14.4 | 3.6 | 57 of 57 (2026-10-01) |
+  | Ubuntu 24.04 (`ubuntu-latest`) | 5.2.21 | 3.12.3 | 3.4 | 61 of 61 |
+  | Ubuntu 26.04 | 5.3.9 | 3.14.4 | 3.6 | 61 of 61 |
 
   The third row is the one the floating `ubuntu-latest` label moves to
   on 2026-10-19; naming it now means that date has already been
