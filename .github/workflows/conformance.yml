@@ -11,6 +11,12 @@ on:
 
 jobs:
   compare:
+    # Deliberately the floating label: a run on whatever the hosted
+    # image happens to be is the point. Two consequences to know about -
+    # the label moves to Ubuntu 26 on 2026-10-19, and actions/checkout@v4
+    # still declares Node 20, which the runners now force to Node 24.
+    # Both are warnings today and could become failures; a red run here
+    # is about this file, not about the two programs.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

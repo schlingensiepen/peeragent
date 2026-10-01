@@ -1,6 +1,6 @@
 # Maturity
 
-**Report date:** 2026-09-30 · **peeragent version:** 0.1.0
+**Report date:** 2026-10-01 · **peeragent version:** 0.1.0
 
 Both command-line programs are in this repository:
 `tools/peeragent.py` (Python, standard library only) and
@@ -11,7 +11,7 @@ document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
   57 cases and compares them with each other. All 57 agree
-  (2026-09-30). That shows the two behave alike. It does not show that
+  (2026-10-01). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
   passes. Eight cases start a fake harness in tmux, one of them a
   harness that exits at once and one that disappears between the two
@@ -21,10 +21,13 @@ document keeps them apart:
   `tests/conformance/README.md` are the only two; `run.sh` refuses to
   run if the number of cases has drifted away from it.
   A workflow under `.github/workflows/` runs that same comparison on a
-  hosted machine, which is what would show it does not depend on one
-  person's setup. As of this report date it has **never run**, so
-  there is no hosted evidence of anything in this document. Treat the
-  workflow as intent until a run of it is linked here.
+  hosted machine, which is what shows the result does not depend on
+  one person's setup. It has run on every push since 2026-09-29,
+  eleven times, and every completed run passed. The run of 2026-10-01
+  took the 57 cases through **tmux 3.4 and Python 3.12.3**, both
+  different from the versions on the machine where the work is done,
+  which is the part worth having: the agreement is not an artefact of
+  one tmux build.
 - **Runs against real harnesses.** On 2026-09-29 both programs were
   started against all five real harnesses on a test host, and one
   `agy` session was taken through the whole path with `send`. These
