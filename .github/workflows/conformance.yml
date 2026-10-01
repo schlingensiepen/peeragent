@@ -11,13 +11,25 @@ on:
 
 jobs:
   compare:
-    # Deliberately the floating label: a run on whatever the hosted
-    # image happens to be is the point. Two consequences to know about -
-    # the label moves to Ubuntu 26 on 2026-10-19, and actions/checkout@v4
-    # still declares Node 20, which the runners now force to Node 24.
-    # Both are warnings today and could become failures; a red run here
-    # is about this file, not about the two programs.
-    runs-on: ubuntu-latest
+    # Two images on purpose. "ubuntu-latest" is a floating label, and it
+    # moves to Ubuntu 26 on 2026-10-19: a tmux and a Python this has
+    # never run on. Naming the next image as well turns that date from a
+    # surprise into a measurement that is already running - and if the
+    # two programs stop agreeing there, it says so now.
+    #
+    # The forward-looking entry does not fail the run. Until the label
+    # exists it cannot resolve, and a red mark for a machine that is not
+    # there yet would say nothing about the programs.
+    #
+    # Also known: actions/checkout@v4 still declares Node 20, which the
+    # runners override. A failure at the checkout step is about this
+    # file, not about the two programs.
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [ubuntu-latest, ubuntu-26.04]
+    runs-on: ${{ matrix.image }}
+    continue-on-error: ${{ matrix.image != 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +38,7 @@ jobs:
 
       - name: Versions
         run: |
+          cat /etc/os-release | head -2
           bash --version | head -1
           python3 --version
           tmux -V
