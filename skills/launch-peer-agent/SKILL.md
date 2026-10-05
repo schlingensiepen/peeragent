@@ -110,6 +110,14 @@ it talks to, a switch its own configuration reads - pass
 peeragent's log; it does not stay off the screen if the harness prints
 it.
 
+Do not touch which tmux server the session lands on. peeragent uses
+the one your environment points at, which is the user's; that is why
+telling them the session name works at all. If you set `TMUX_TMPDIR`,
+the session goes onto a private socket, the user's `tmux ls` does not
+show it, and the name you dutifully reported leads nowhere. This has
+happened here: someone looked for their running agents and found
+nothing.
+
 If the harness needs a flag peeragent does not model, pass it with
 `--harness-arg`, once per argument. peeragent hands it over unread, so
 check the harness's own `--help` on the machine that will run it. Do

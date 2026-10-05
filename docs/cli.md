@@ -402,6 +402,18 @@ versioned, re-read and referred to; a command line cannot.
     child processes and a `hint` with the read-only attach line
     `tmux attach -r -t '=<session>'`.
 
+peeragent creates the session on whatever tmux server the caller's
+environment points at, and sets nothing to change that. Normally that
+is the user's own server, which is the point: the session name and the
+read-only attach line peeragent reports are only usable if a plain
+`tmux ls` shows the session. **A caller should not redirect that.**
+Setting `TMUX_TMPDIR` puts the session on a private socket where the
+user's `tmux ls` does not list it, and the fallback that survives any
+harness update - a person attaching and looking - is closed off. The
+one case where a private server is right is testing peeragent itself,
+where the sessions are deliberately kept away from the user's; the
+conformance suite does exactly that, per case.
+
 The harness keeps running in tmux after peeragent returns, on its
  own and with no connection back to the caller. Talking to it later
  needs a mechanism arranged in the assignment; the recommended ways
