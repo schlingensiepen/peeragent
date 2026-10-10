@@ -233,6 +233,17 @@ onboarding dialog comes first — `Let's get started` and
 Enter (`tested` 2026-09-23). Both texts are markers. There is no
 key sequence for this: the login happens outside peeragent.
 
+Before that dialog, version 2.1.296 plays an animated welcome screen
+that carries no marker at all, so a capture taken while it runs is
+reported as an unrecognised screen. Seen on 2026-10-10 with a boot
+wait of 8 seconds, which was not enough to get past it (`observed`).
+This matters for a caller that gives each run its own configuration
+directory to avoid the trust question: a fresh directory also means
+the animation and the onboarding dialog, so the first screen is a
+setup step and not the harness waiting for work. Either raise
+`--boot-wait`, or put a configuration into that directory that has
+been through the onboarding once.
+
 **Busy.** The marker is `· thinking)`, as in the spinner line
 `✢ Pouncing… (1s · thinking)` (`tested` 2026-09-23). The second
 marker `esc to interrupt` is `unverified`: it did not appear in the

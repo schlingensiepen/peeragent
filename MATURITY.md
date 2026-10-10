@@ -136,9 +136,13 @@ harness's command line in the order given and before the prompt, and
 server that does not carry the variable (`tested`). The same run showed
 the value kept out of peeragent's own records and present in the
 captured screen, because that stand-in prints its environment
-(`observed`). Neither option has been used with a real harness through
-these programs, so what a real harness does with an argument it does
-not know is `unverified`.
+(`observed`). `--harness-arg` was taken through to a real harness on 2026-10-10:
+`claude --add-dir <dir> <prompt>` stood on the pane process's command
+line, the arguments in the order given and the prompt last (`tested`,
+Python program; the Bash program builds the same list and a
+conformance case holds the two to it). What a harness does with an
+argument it does **not** know is still `unverified` - nothing has been
+passed that a harness rejects.
 
 Still not exercised against a real harness: `--resume` for the Codex
 CLI, OpenCode and the Copilot CLI, each of which needs a session to
