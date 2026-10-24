@@ -175,6 +175,7 @@ reproduced on a host: `unverified`.
 | What you see | Exit | Cause | Remedy |
 |---|---|---|---|
 | `tmux` reported as missing | 3 | Starting a harness and sending a prompt both need tmux. | Install tmux with your distribution's package manager and run again. |
+| The call to `start agent` is refused by the calling harness's own safety check, and no peeragent output appears | none | The call launches an agent with an approval-free switch such as `--dangerously-skip-permissions`; peeragent never ran (`observed` 2026-10-24, Claude Code in auto mode). | Not a peeragent fault. Tell the user what you tried, let them add a permission rule or start the session themselves, and do not rephrase the call to get past the check. See [`../skills/launch-peer-agent/SKILL.md`](../skills/launch-peer-agent/SKILL.md). |
 | A harness reported as missing | 3 | The binary is not on `PATH`. | Install it as described in [`harnesses.md`](harnesses.md). If it is installed under `~/.local/bin`, put that directory on `PATH`. |
 | `git` reported as missing | 3 | Only requested because you asked peeragent to initialise a repository. | Install git, or drop the repository option. |
 | Harness found, version unknown, plus a warning | 0 | The version query timed out or failed although the binary exists. | Run `<binary> --version` by hand. A self-updating launcher may be busy installing; OpenCode installs a package at startup. |

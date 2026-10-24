@@ -339,6 +339,34 @@ authentication question and not as ready, which is what you act
 on — but if you look at the pane yourself, do not be fooled by the
 prompt you see there.
 
+### Starting without approval prompts is the user's decision
+
+Each harness has a switch that approves tool use without asking
+(`--dangerously-skip-permissions` for `claude`,
+`--dangerously-bypass-approvals-and-sandbox` for `codex`, `--auto` for
+`opencode`, and so on; read the current name off the harness's own
+`--help`). Passing one with `--harness-arg` starts an agent that
+writes files and runs commands without a question. That is not your
+decision to take.
+
+- **Ask the user before the start**, once per run or once per kind of
+  run, and say what you are asking: which harness, which directory,
+  which switch, and what the agent will be told to do. A general
+  go-ahead for the task is not that approval.
+- **Prefer the narrower route.** Allow single tools or paths if the
+  harness has a switch for that, or give the harness its own
+  configuration directory with the trust state already written. Both
+  leave the safety question in place where it matters.
+- **The calling harness may refuse the start anyway.** Its own safety
+  check can block a call that launches an agent without approval
+  prompts, even with the user's go-ahead in the conversation
+  (`observed` 2026-10-24: Claude Code in auto mode denied such a
+  `start agent` before peeragent ran, and nothing was started). That
+  denial is not a peeragent failure and not a bug to work around.
+  Stop, tell the user what you tried and why, and let them either add
+  a permission rule on their side or start the session themselves.
+  Do not rephrase the call to get past the check.
+
 ## Deliver a deferred prompt with `send`, and only then
 
 If peeragent could not get the prompt into the harness, it emits

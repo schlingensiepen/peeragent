@@ -85,6 +85,13 @@ being right about a screen.
   or runs something; that is the caller's decision to make, and it is
   made per run, not once in a tool.
 
+  A caller that is itself an agent takes this decision from its user,
+  not for them, and its own harness may refuse the start even then
+  (`observed` 2026-10-24, Claude Code in auto mode: the call was
+  denied before peeragent ran). See "Starting without approval
+  prompts is the user's decision" in
+  [`../skills/launch-peer-agent/SKILL.md`](../skills/launch-peer-agent/SKILL.md).
+
 Variables that the harness has to see at startup belong in `--env`,
 not in the shell that calls peeragent: a harness in tmux inherits the
 tmux server's environment, not the caller's.

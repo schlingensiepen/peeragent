@@ -10,6 +10,12 @@ Two options a caller asked for, after a project tried to start eleven
 agents at once and found what was missing. Nothing existing changed its
 behaviour.
 
+### Documented
+
+- Starting an agent without approval prompts is the user's decision, and the
+  calling harness may refuse the start even with the user's go-ahead. The
+  skill, the harness document and the troubleshooting table now say so.
+
 ### Added
 
 - `--harness-arg <arg>` on `start agent`, repeatable: the argument is
