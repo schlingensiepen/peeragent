@@ -21,9 +21,9 @@ jobs:
     # exists it cannot resolve, and a red mark for a machine that is not
     # there yet would say nothing about the programs.
     #
-    # Also known: actions/checkout@v7 still declares Node 20, which the
-    # runners override. A failure at the checkout step is about this
-    # file, not about the two programs.
+    # Also known: a failure at the checkout step is about this file or
+    # about the action, not about the two programs. actions/checkout@v7
+    # declares Node 24 (read off its action.yml, 2026-10-24).
     strategy:
       fail-fast: false
       matrix:
