@@ -21,7 +21,7 @@ jobs:
     # exists it cannot resolve, and a red mark for a machine that is not
     # there yet would say nothing about the programs.
     #
-    # Also known: actions/checkout@v4 still declares Node 20, which the
+    # Also known: actions/checkout@v7 still declares Node 20, which the
     # runners override. A failure at the checkout step is about this
     # file, not about the two programs.
     strategy:
@@ -31,7 +31,7 @@ jobs:
     runs-on: ${{ matrix.image }}
     continue-on-error: ${{ matrix.image != 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install tmux
         run: sudo apt-get update && sudo apt-get install -y tmux
