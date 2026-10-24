@@ -10,6 +10,19 @@ Two options a caller asked for, after a project tried to start eleven
 agents at once and found what was missing. Nothing existing changed its
 behaviour.
 
+### Changed
+
+- `agy` now receives the launch prompt as an argument (`agy -i
+  "<prompt>"`) instead of by paste into the running pane. The prompt
+  therefore survives the trust question, as it does with `claude`, and
+  `agent.prompt_deferred` reports `delivery: "argv"` for it. `send`
+  still works with `agy`. The change follows a run of 2026-10-24 in
+  which `-i` was started in a plain tmux session and then through
+  `start agent`; until then `-i` had never been run and the paste path
+  was used. A conformance case (`start-agy-prompt-as-argument`) checks
+  that both programs build the same command line. Only `opencode` still
+  takes its prompt by paste.
+
 ### Documented
 
 - Secrets for a launched agent go into a mode-600 file outside every

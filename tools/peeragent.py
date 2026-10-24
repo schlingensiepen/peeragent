@@ -726,7 +726,7 @@ class AgyHandler(Handler):
     key = "agy"
     description = "Google Antigravity CLI"
     binary = "agy"
-    prompt_delivery = "send_keys"
+    prompt_delivery = "argv"
     resume_support = "experimental"
     duplicate_support = "unsupported"
     duplicate_tested = False
@@ -756,6 +756,12 @@ class AgyHandler(Handler):
 
     def model_argv(self, model):
         return ["--model", model]
+
+    # `-i` is the short form of --prompt-interactive: run an initial prompt
+    # interactively and stay in the session. Tested 2026-10-24 against agy
+    # 1.3.3: the prompt survived the trust question and was answered after it.
+    def prompt_prefix_argv(self):
+        return ["-i"]
 
     def detect_prompt_type(self, pane_text):
         if (

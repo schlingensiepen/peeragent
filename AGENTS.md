@@ -33,8 +33,8 @@ OpenCode and the Copilot CLI was not reached.
 Of the five supported harnesses only `claude` has detection, launch,
 prompt delivery, resume and duplicate checked on the harness itself.
 For `codex` launch and prompt hand-over are tested and resume rests on
-harness documentation; for `agy` the trust answer and the hand-over by
-pasting were tested on 2026-09-29; for `opencode` the prompt hand-over
+harness documentation; for `agy` the trust answer was tested on 2026-09-29 and the
+hand-over as an argument (`-i`) on 2026-10-24 through the Bash program; for `opencode` the prompt hand-over
 by pasting has never been run; `duplicate` is refused for everything
 except `claude`.
 

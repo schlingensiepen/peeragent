@@ -103,7 +103,7 @@ tmux server's environment, not the caller's.
 |---|---|---|---|---|---|---|---|
 | `claude` | Claude Code CLI (Anthropic) | `claude` | `argv` | `ok` | `ok`, tested | `Down Enter` | `2.1.278 (Claude Code)` |
 | `codex` | OpenAI Codex CLI | `codex` | `argv` | `experimental` | `unsupported` | `1` | `codex-cli 0.147.0` |
-| `agy` | Google Antigravity CLI | `agy` | `send_keys` | `experimental` | `unsupported` | `Enter` | `1.2.8` |
+| `agy` | Google Antigravity CLI | `agy` | `argv` | `experimental` | `unsupported` | `Enter` | `1.2.8` |
 | `opencode` | OpenCode (anomalyco) | `opencode` | `send_keys` | `experimental` | `unsupported` | none | `1.18.25` |
 | `copilot` | GitHub Copilot CLI | `copilot` | `argv` | `experimental` | `unsupported` | `1` | `GitHub Copilot CLI 1.0.88.` |
 
@@ -531,17 +531,19 @@ configuration directory is documented.
 
 ### Prompt delivery
 
-`send_keys`. A flag for an interactive start with an initial prompt
-does exist — `--prompt-interactive`, short `-i` — but what it does
-has never been run here, and the print flag is the headless one,
-which would end the pane. peeragent therefore pastes the prompt
-into the running pane, and only when the pane is `ready`.
+`argv`, since 2026-10-24: peeragent starts `agy -i "<prompt>"`.
+`-i` is the short form of `--prompt-interactive`, which runs an
+initial prompt interactively and keeps the session open; the print
+flag (`-p`) is the headless one and would end the pane, so it is not
+used. Seen on 2026-10-24 with agy 1.3.3 in a plain tmux session: the
+trust question came first, `Enter` answered it, and the prompt then
+ran and was answered (`tested`). The prompt thus survives the trust
+question the way it does with `claude`.
 
-The paste path is `tested` 2026-09-29: with an account configured
-and the trust question answered, a prompt delivered with
-`peeragent send` reached the harness and was answered. Delivery by
-`start agent` itself, without the trust question in the way, has
-not been run.
+Until 2026-10-24 peeragent pasted the prompt into the running pane
+instead (`send_keys`), because `-i` had never been run. That paste
+path was `tested` 2026-09-29 with `peeragent send`, and `send` still
+works with `agy` for a prompt that has to be delivered later.
 
 ### Duplicate
 
@@ -604,8 +606,9 @@ close the harness, so do not carry one answer over to the other.
 
 **Ready** (`tested` 2026-09-29). After the trust answer the pane
 shows a line that is exactly `>`, with a status line reading
-`? for shortcuts`. That is the marker, so a prompt is delivered by
-paste once the pane reaches it.
+`? for shortcuts`. That is the marker. A prompt that was passed as an
+argument is already on that screen; one delivered with `send` is
+pasted once the pane reaches it.
 
 **Process picture.** The pane process re-executes itself with
 internal flags, seen as

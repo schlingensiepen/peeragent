@@ -2,22 +2,23 @@
 
 This walks through a single use of peeragent: write the
 assignment, start a harness, recognise the question it stops on,
-answer it with the right key sequence, deliver the prompt that was
-left behind, and look at the result.
+answer it with the right key sequence, check that the prompt arrived,
+and look at the result.
 
 Read [`../MATURITY.md`](../MATURITY.md) first. The section "What is
 evidenced here" at the end of this file says which screens on this
 page come from a recorded run and which come from earlier checks.
 
 The example uses `agy`, because it shows the longest path: the
-harness stops on a trust question, the prompt is not delivered, and
-you deliver it afterwards. The output in steps 3 to 6 is from a run
-on 2026-09-29 with the Python program and Antigravity CLI 1.2.13.
-It is edited in four ways, and only these: paths are replaced by
-neutral ones, the logo and the account line of the start banner are
-left out, long runs of padding are shortened, and the byte count is
-the one of the neutral prompt file. A shorter variant with `claude`
-follows at the end.
+harness stops on a trust question, and the prompt waits behind it on
+the command line. The output in steps 3, 4 and 6 is from a run on
+2026-10-24 with the Bash program and Antigravity CLI 1.4.7; the
+output of `send` in step 5 is from 2026-09-29 (1.2.13, Python
+program). Both are edited in the same four ways, and only these: paths
+are replaced by neutral ones, the logo and the account line of the
+start banner are left out, long runs of padding are shortened, and the
+session suffix and process id are replaced by fixed values. A shorter
+variant with `claude` follows at the end.
 
 Placeholders used throughout: `/srv/project` is the working
 directory, `/srv/project/TASK.md` the assignment,
@@ -79,15 +80,15 @@ a JSON array:
 [
 {"type":"info","msg":"tmux found: 3.5a","user_relevant":false}
 ,
-{"type":"info","msg":"harness agy found: 1.2.13","user_relevant":false}
+{"type":"info","msg":"harness agy found: 1.4.7","user_relevant":false}
 ,
 {"type":"agent.starting","harness":"agy","folder":"/srv/project","model":null,"resume":false,"prompt_file":"/srv/project/.peeragent-prompt.txt","user_relevant":false}
 ,
-{"type":"agent.pane","session":"peeragent-project-agy-27f1d588","awaiting":"trust_prompt","lines":["Accessing workspace:","","/srv/project","","Do you trust the contents of this project?","","Antigravity CLI requires permission to read, edit, and execute files here.","","> Yes, I trust this folder","  No, exit","","  ↑/↓ Navigate · enter Confirm","                        Gemini 3.8 Flash · high"],"user_relevant":false}
+{"type":"agent.pane","session":"peeragent-project-agy-27f1d588","awaiting":"trust_prompt","lines":["Accessing workspace:","","/srv/project","","Do you trust the contents of this project?","","Antigravity CLI requires permission to read, edit, and execute files here.","","> Yes, I trust this folder","  No, exit","","  ↑/↓ Navigate · enter Confirm"],"user_relevant":false}
 ,
 {"type":"warn","msg":"harness agy is awaiting trust-prompt confirmation","user_relevant":true,"hint":"send 'Enter' to trust: tmux send-keys -t '=peeragent-project-agy-27f1d588:' Enter"}
 ,
-{"type":"agent.prompt_deferred","session":"peeragent-project-agy-27f1d588","prompt_file":"/srv/project/.peeragent-prompt.txt","awaiting":"trust_prompt","delivery":"send_keys","hint":"deliver with: peeragent send --session peeragent-project-agy-27f1d588 --prompt-file /srv/project/.peeragent-prompt.txt","user_relevant":true}
+{"type":"agent.prompt_deferred","session":"peeragent-project-agy-27f1d588","prompt_file":"/srv/project/.peeragent-prompt.txt","awaiting":"trust_prompt","delivery":"argv","hint":"the prompt was passed as a command-line argument; once the pane has reached a state you understand, capture it - if the harness did not pick the prompt up, deliver with: peeragent send --session peeragent-project-agy-27f1d588 --prompt-file /srv/project/.peeragent-prompt.txt","user_relevant":true}
 ,
 {"type":"agent.started","session":"peeragent-project-agy-27f1d588","pane_pid":67615,"child_processes":[],"hint":"watch with: tmux attach -r -t '=peeragent-project-agy-27f1d588'","user_relevant":false}
 ]
@@ -101,10 +102,12 @@ is waiting for an answer. What to read out of it:
   harness stops on something the first time: on the trust question
   if the directory is new to it, or on a login or provider question
   if none is configured on the machine.
-- `agent.prompt_deferred` says the assignment has **not** reached
-  the harness, and `delivery` is `send_keys`: this harness takes its
-  prompt by paste, and peeragent pastes only into a screen that is
-  ready. Step 5 delivers it.
+- `agent.prompt_deferred` says peeragent cannot tell whether the
+  assignment has reached the harness. `delivery` is `argv`: `agy`
+  was started as `agy -i "<prompt>"`, so the prompt is on its command
+  line and waits behind the trust question. Step 5 checks that it
+  arrived; with a harness that takes its prompt by paste the same
+  message says `send_keys` and means that nothing was delivered.
 - `agent.started.session` is the name you need for every
   follow-up command. Keep it, and tell the user, together with
   the read-only attach line from the hint. That is how they can
@@ -129,18 +132,21 @@ tmux send-keys -t "=peeragent-project-agy-27f1d588:" Enter
 Note the `:` at the end of the target. Pane commands need it;
 without it tmux reads the name as a window name and fails.
 
-Four seconds later the pane looked like this (banner logo and
-account line left out):
+Twenty-five seconds later the pane looked like this (banner logo
+and account line left out):
 
 ```text
-                  Antigravity CLI 1.2.13
-                  Gemini 3.8 Flash (High)
-                  /srv/project
+> Read /srv/project/TASK.md and do what it says. Then stop.
+● Explored 1 file (TASK.md) (ctrl+o to expand)
+  ZEBRA
 ─────────────────────────────────────────────
 >
 ─────────────────────────────────────────────
-? for shortcuts                Gemini 3.8 Flash · high
+? for shortcuts                Gemini 4 Argon · medium
 ```
+
+The prompt was not lost behind the dialog: `agy` took it as its first
+turn, read the task file and answered. That is step 5's job to check.
 
 Per harness, the first start in a new directory and its answer:
 
@@ -171,12 +177,21 @@ For `opencode`, and for `agy` on a machine with no account, there
 is nothing to send. Inform the user and stop; the login and the
 provider setup are interactive and external.
 
-## Step 5: deliver the prompt
+## Step 5: check that the prompt arrived
 
-Now, and only now, deliver the assignment. The rule is strict:
-call `send` only after you have seen `agent.prompt_deferred` for
-that session, because otherwise the harness may already have the
-prompt and would carry out the assignment twice.
+For a harness that takes its prompt as an argument (`claude`,
+`codex`, `agy`, `copilot`), look at the pane before you do anything
+else. If the prompt and an answer or a working indicator are there,
+the assignment arrived and you are done with delivery.
+
+```bash
+tmux capture-pane -t "=peeragent-project-agy-27f1d588:" -p
+```
+
+Only if the input line is empty and the prompt is nowhere on the
+screen did the harness not pick it up. Then, and only then, deliver
+it with `send`. Delivering twice makes the harness carry out the
+assignment twice.
 
 ```bash
 peeragent send \
@@ -184,6 +199,14 @@ peeragent send \
   --prompt-file /srv/project/.peeragent-prompt.txt \
   --json
 ```
+
+`send` is also the way for a harness that takes its prompt by paste
+(`opencode`): there `agent.prompt_deferred` says `send_keys`, nothing
+was delivered, and you call `send` once the question is answered.
+Until 2026-10-24 `agy` was such a harness, and the output of
+`send` below is from that time (2026-09-29, `agy` 1.2.13). It shows
+what `send` reports: the screen before the paste, the bytes pasted and
+the screen after it.
 
 ```json
 [
@@ -204,7 +227,7 @@ the screen after it. Read the second one carefully. The prompt is
 in the input area and a `Generating...` line shows that the harness
 took it and is working, yet `awaiting` is `ready`. peeragent has no
 busy marker for `agy`, and the bare `>` input line stays on screen
-while it works (`observed`, see MATURITY.md). For this harness the
+while it works (`observed`, see MATURITY.md). For `agy` the
 evidence that the prompt landed is the pane, not the `awaiting`
 value. Look at the pane before sending a second time.
 
@@ -217,19 +240,19 @@ This is read-only and does not disturb it:
 tmux capture-pane -t "=peeragent-project-agy-27f1d588:" -p
 ```
 
-Eight seconds after the paste it showed:
+Once the harness had answered, it showed (the screen of step 4):
 
 ```text
 > Read /srv/project/TASK.md and do what it says. Then stop.
-● Read(/srv/project/TASK.md) (ctrl+o to expand)
+● Explored 1 file (TASK.md) (ctrl+o to expand)
   ZEBRA
 ─────────────────────────────────────────────
 >
 ─────────────────────────────────────────────
-? for shortcuts                Gemini 3.8 Flash · high
+? for shortcuts                Gemini 4 Argon · medium
 ```
 
-The `● Read(...)` line is the harness reading the task file that the
+The `● Explored 1 file` line is the harness reading the task file that the
 pointer prompt named, and `ZEBRA` is what the task file asked for.
 
 To let the user watch, pass on the attach line from
@@ -277,8 +300,9 @@ tmux server, together with everything else you have there.
 
 ## The shorter path: claude
 
-`claude` receives the prompt as a command-line argument, so the
-prompt survives the trust question and usually needs no `send`.
+`claude` receives the prompt as a command-line argument, as `agy` now
+does, so the prompt survives the trust question and usually needs no
+`send`.
 The start command is the same with `--harness claude`.
 
 Its trust dialog, captured on 2026-09-23 with claude 2.1.278 in a
@@ -300,11 +324,10 @@ tmux send-keys -t "=peeragent-project-claude-a3f1c9e2:" Down Enter
 ```
 
 After that, `claude` picks up the argument prompt as its first
-turn. Tested on 2026-09-23: no `send` was needed. Because
-`delivery` is `argv` rather than `send_keys`, the rule differs
-from step 5 above: capture the pane first, and deliver with `send`
-only if the input line is empty, meaning the harness did not take
-the prompt.
+turn. Tested on 2026-09-23: no `send` was needed. The rule
+is the one of step 5: capture the pane first, and deliver with
+`send` only if the input line is empty, meaning the harness did not
+take the prompt.
 
 A finished turn in `claude` looks like this, captured on
 2026-09-23 with the same three-line test prompt:
@@ -326,13 +349,17 @@ captures twice before deciding.
 
 ## What is evidenced here
 
-- Recorded run, 2026-09-29, Antigravity CLI 1.2.13 and tmux 3.5a,
-  Python program: the output of steps 3 and 5 and the pane text of
-  steps 4 and 6, with the edits named at the top. The Bash program
-  was taken through the same path in a second directory; it gave the
-  same `awaiting` value at every step, including `ready` in the
-  pane that was still generating (`observed`, not recorded line by
-  line).
+- Recorded run, 2026-10-24, Antigravity CLI 1.4.7 and tmux 3.5a,
+  Bash program: the output of step 3 and the pane text of steps 4
+  and 6, with the edits named at the top. The Python program was
+  not run on that day for this path; the conformance case
+  `start-agy-prompt-as-argument` checks that both programs build the
+  same command line.
+- Recorded run, 2026-09-29, Antigravity CLI 1.2.13, Python program:
+  the output of `send` in step 5, from the time `agy` took its prompt
+  by paste. The Bash program was taken through the same path then; it
+  gave the same `awaiting` value at every step, including `ready` in
+  the pane that was still generating (`observed`).
 - Tested on 2026-09-23: the trust dialog wording of `claude` and
   its `Down Enter` answer; the trust answer for `codex` and
   `copilot`; the two `claude` pane captures in the variant below;

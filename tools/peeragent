@@ -1151,7 +1151,7 @@ h_agy_meta() {
   # unlike Claude Code, which preselects the refusing one and needs an arrow
   # key first. Tested 2026-09-29 against agy 1.2.12.
   printf '%s|%s|%s|%s|%s|%s|%s\n' \
-    "Google Antigravity CLI" "agy" "send_keys" "experimental" "unsupported" "false" "Enter"
+    "Google Antigravity CLI" "agy" "argv" "experimental" "unsupported" "false" "Enter"
 }
 
 h_agy_resume_hint() {
@@ -1187,7 +1187,12 @@ h_agy_model_argv() {
   printf '%s\0%s\0' "--model" "$1"
 }
 
-h_agy_prompt_prefix_argv() { :; }
+# `-i` is --prompt-interactive: run an initial prompt interactively and stay
+# in the session. Tested 2026-10-24 against agy 1.3.3: the prompt survived the
+# trust question and was answered after it.
+h_agy_prompt_prefix_argv() {
+  printf -- '-i\0'
+}
 
 h_agy_detect_prompt_type() {
   local text line

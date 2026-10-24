@@ -82,7 +82,7 @@ directory it belongs to, so it cannot be a static fixture.
 No case calls `send`, and none uses a real harness: the five names
 under `fixtures/bin/` are all one stand-in script.
 
-Nine of the 61 cases do start a fake harness in tmux, so **the suite
+Ten of the 62 cases do start a fake harness in tmux, so **the suite
 needs tmux**, and it checks for it before running anything. `run.sh`
 also refuses to run when the number of cases no longer matches the
 number written into it, because that number and the one in

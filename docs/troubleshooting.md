@@ -143,7 +143,7 @@ There are consequences for the start prompt:
   field: capture the pane once it shows a state you understand, and
   deliver again **only** if the prompt is not there. Delivering
   twice sends it twice.
-- With the two that take it by paste (`agy`, `opencode`) nothing was
+- With the one that takes it by paste (`opencode`) nothing was
   delivered while the pane was not ready, and the deferred-prompt
   message says `send_keys`. Answer the question first, then deliver
   with `peeragent send`.

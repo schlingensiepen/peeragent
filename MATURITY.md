@@ -12,7 +12,7 @@ document keeps them apart:
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
   61 cases and compares them with each other. All 61 agree
   (2026-10-01, and again on the development host on 2026-10-24 after
-  the documentation changes of that day: 61 of 61, not yet run on the
+  the documentation changes of that day: 61 of 61 before the `agy` change, 62 of 62 after it, not yet run on the
   hosted images). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
   passes. Nine cases start a fake harness in tmux, one of them a
@@ -66,7 +66,7 @@ versions, except for `claude` (see the run of that day):
 |---|---|---|---|
 | `claude` | `2.1.278 (Claude Code)` | `2.1.284 (Claude Code)` | `2.1.310 (Claude Code)` |
 | `codex` | `codex-cli 0.147.0` | `codex-cli 0.147.0` | `codex-cli 0.147.0` |
-| `agy` | `1.2.8` | `1.2.12`, later the same day `1.2.13` | `1.3.3` |
+| `agy` | `1.2.8` | `1.2.12`, later the same day `1.2.13` | `1.3.3`, later the same day `1.4.7` |
 | `opencode` | `1.18.25` | `1.18.32` | `1.18.33` |
 | `copilot` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.95.` |
 
@@ -169,7 +169,7 @@ table.
 |---|---|---|---|---|---|
 | `claude` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-23 | `--continue`, `tested` 2026-09-23 | supported, `tested` 2026-09-16 |
 | `codex` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-23 | `resume --last`, `documented` | refused; store `observed` |
-| `agy` | `tested` 2026-09-29 | `tested` 2026-09-29 | `send_keys`, paste mechanism `tested` 2026-09-29 via `send`; delivery by `start agent` itself not run | `--continue`, `documented` | refused; store `unverified` |
+| `agy` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv` with `-i` since 2026-10-24, `tested` that day (1.3.3 directly, 1.4.7 through the Bash program's `start agent`); paste via `send` `tested` 2026-09-29 | `--continue`, `documented` | refused; store `unverified` |
 | `opencode` | `tested` 2026-09-29 | `tested` 2026-09-29 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `observed` |
 | `copilot` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-28 | `--continue`, `documented` | refused; store `observed` |
 
@@ -212,8 +212,10 @@ Per harness, in detail:
   generates its answer. peeragent has no busy marker for `agy`, so
   the pane captured right after a `send` was reported as `ready`
   while the answer was still being generated (`observed` 2026-09-29,
-  both programs). Delivery of a launch prompt by `start agent` itself
-  once `agy` is ready has not been run; the tested path used `send`.
+  both programs). The launch prompt now travels as an argument (`-i`); that
+  was run against the harness directly on 2026-10-24 (1.3.3) and
+  through the Bash program's `start agent` (1.4.7), not yet through the
+  Python program.
   Its session store layout remains unknown, so duplicating is still
   refused.
 - `opencode` comes up but refuses to work until a provider is

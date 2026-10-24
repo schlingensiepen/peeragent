@@ -20,6 +20,11 @@
 #               argument or the variable did not reach the harness" into a
 #               session that is gone, which the comparison can see - the
 #               captured screen itself is compared only by line count.
+#   needprompt  refuse to start unless the last argument is the prompt
+#               text "read TASK.md" and the one before it is -i, the way a
+#               harness that takes its prompt as an argument is started.
+#               Same device as needenv: a prompt that did not arrive as the
+#               last argument becomes a session that is gone.
 #
 # The name it was invoked under decides the version string, so the
 # five fakes are symlinks to this one file.
@@ -84,6 +89,16 @@ BOX
     fi
     if [ -n "$missing" ]; then
       printf '%s: did not receive %s\n' "$name" "$missing" >&2
+      exit 1
+    fi
+    printf '%s ready\n' "$name"
+    printf '%s\n' "> "
+    ;;
+  needprompt)
+    last="${*: -1}"
+    prev="${*: -2:1}"
+    if [ "$#" -lt 2 ] || [ "$last" != "read TASK.md" ] || [ "$prev" != "-i" ]; then
+      printf '%s: the prompt did not arrive as "-i" and last argument\n' "$name" >&2
       exit 1
     fi
     printf '%s ready\n' "$name"
