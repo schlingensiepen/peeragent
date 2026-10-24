@@ -131,10 +131,8 @@ are worth recommending:
   it across users and hosts.
 - **[simple-a2a](https://github.com/schlingensiepen/simple-a2a).**
   A small agent-to-agent protocol, for when file dropping is not
-  enough and you want addressed messages between agents. **It is not
-  published yet**, so that link will not resolve for now: it is being
-  built with peeragent, and it follows once it is. The folder above
-  needs nothing but a directory, so it is the way that works today.
+  enough and you want addressed messages between agents. It was built
+  with peeragent. The folder above needs nothing but a directory.
 
 Either way the mechanism belongs in the assignment text, not in the
 launch prompt, which is limited to a pointer. `docs/cli.md` explains
