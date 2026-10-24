@@ -10,12 +10,13 @@ What is known about them comes from three kinds of check, and this
 document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
-  61 cases and compares them with each other. All 61 agree
-  (2026-10-01, and again on the development host on 2026-10-24 after
-  the documentation changes of that day: 61 of 61 before the `agy` change, 62 of 62 after it, not yet run on the
-  hosted images). That shows the two behave alike. It does not show that
+  62 cases and compares them with each other. All 62 agree
+  (2026-10-24, development host). Until the case for the `agy` prompt
+  was added that day the suite had 61 cases, which all agreed on
+  2026-10-01 and again on 2026-10-24; the hosted images below ran those
+  61 and have not seen the 62nd. That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
-  passes. Nine cases start a fake harness in tmux, one of them a
+  passes. Ten cases start a fake harness in tmux, one of them a
   harness that exits at once, one that disappears between the two
   captures and one that refuses to start unless an argument and a
   variable reached it; no case calls `send`, and no case uses a
@@ -31,7 +32,7 @@ document keeps them apart:
 
   | Where | bash | Python | tmux | Result |
   |---|---|---|---|---|
-  | development host | 5.2.37 | 3.13.5 | 3.5a | 61 of 61 |
+  | development host | 5.2.37 | 3.13.5 | 3.5a | 62 of 62 |
   | Ubuntu 24.04 (`ubuntu-latest`) | 5.2.21 | 3.12.3 | 3.4 | 61 of 61 |
   | Ubuntu 26.04 | 5.3.9 | 3.14.4 | 3.6 | 61 of 61 |
 
