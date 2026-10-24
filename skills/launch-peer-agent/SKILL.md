@@ -104,11 +104,12 @@ It does not inherit your environment either, and this one surprises
 people: a harness in tmux gets the environment of the tmux *server*,
 which on a server that has been running for a while is the environment
 of whenever it started. Exporting a variable before you call peeragent
-does not reach the peer agent. If it needs one - a token for a service
-it talks to, a switch its own configuration reads - pass
-`--env NAME=VALUE`, once per variable. The value stays out of
-peeragent's log; it does not stay off the screen if the harness prints
-it.
+does not reach the peer agent. If it needs one - a switch its own
+configuration reads - pass `--env NAME=VALUE`, once per variable. The
+value stays out of peeragent's log; it does not stay off the screen if
+the harness prints it, and it stands on the command line of your own
+call, where the process list and your shell history can show it. For a
+secret use a file instead, see "Secrets for the launched agent".
 
 Do not touch which tmux server the session lands on. peeragent uses
 the one your environment points at, which is the user's; that is why
@@ -157,10 +158,11 @@ lets you watch; neither is a conversation. Everything the launched
 harness needs to know has to be in the assignment, because nothing
 else will tell it. Cover all of these:
 
-1. **The communication mechanism and how to reach it.** Protocol,
-   address and credentials of the back channel belong in the
-   assignment. Do not rely on the launched harness discovering
-   them. peeragent is orthogonal to the mechanism and provides
+1. **The communication mechanism and how to reach it.** Protocol
+   and address of the back channel belong in the assignment. A
+   secret does not: name the file that holds it, see "Secrets for the
+   launched agent" below. Do not rely on the launched harness
+   discovering them. peeragent is orthogonal to the mechanism and provides
    none, so pick one and describe it. Two are worth recommending:
    - **A folder both sides agree on.** Name the directory, say who
      writes what under which file names, and ask for a first file
@@ -414,6 +416,70 @@ only; for the other four it is documented but untested, and
 `copilot` in particular falls back to the most recent session
 anywhere on the host when the working directory has none.
 Check [`MATURITY.md`](../../MATURITY.md) before you rely on it.
+
+## Secrets for the launched agent
+
+A token, an invitation or a password must not stand in the task file,
+in the prompt or in `--env`: the task file lies in a working directory
+that may end up in a repository, the prompt is a command-line
+argument, and `--env` puts the value on the command line of your own
+call. Instead:
+
+- Write the secret into a file with mode `600`, outside every
+  repository and outside the shared back-channel folder.
+- Put only the **path** into the task file, and tell the agent to read
+  it, to keep its own copy (also mode `600`, outside any repository)
+  and not to repeat the secret in any message.
+- Say in the task file when the secret can be used only once and what
+  the agent must do first: save the answer unchanged to a file before
+  it reads or processes it. A one-time secret that was shown once and
+  then lost cannot be recovered.
+- Do not assume tools. A task that says "parse the answer with `jq`"
+  fails on a machine without it, and with a one-time secret the failure
+  is permanent. Name only tools you have seen on that host.
+
+## Keep track of what you started
+
+You often start more than one agent. Keep a register of your own, a
+plain file you write after every start, one line per session: the
+session name from `agent.started`, the harness, the folder, the time
+and what the agent was told to do. Do not rely on your memory, and do
+not rely on peeragent's log: a harness that died leaves nothing in it
+(see above). `tmux ls` shows the sessions; the name is
+`peeragent-<folder base name>-<harness>-<8 hex digits>`, so a register
+line lets you find the right one without guessing.
+
+A fresh working directory for a test or a throwaway agent belongs
+**outside** any git repository. Otherwise `codex` asks to trust the
+whole repository it lies in (see above), and a later cleanup of the
+directory touches the wrong thing.
+
+## Waiting for an agent, and questions in the middle of a run
+
+The first screen is not the end of the harness's questions. A running
+agent can stop at a tool approval, a permission question or a
+question about its assignment at any time. A session that waits for an
+answer looks like a session that is asleep.
+
+- **Look at the pane at a fixed pace**, not continuously: every 30 to
+  60 seconds while you wait for a first message, less often once the
+  agent has reported. `tmux capture-pane -p -t "=<session>:"` is
+  enough; a changing last line means it is working, an unchanged
+  question means it waits.
+- **Decide per question, do not guess a key.** If the pane shows a yes
+  or no question about a step that the assignment itself asks for, and
+  your user has said that you may answer such questions, answer it with
+  the option the screen offers. Never choose an option that widens the
+  permission for the rest of the session ("don't ask again", "switch to
+  auto mode") unless your user said so.
+- **If nobody is there to ask and the question is not of that kind,**
+  send no key. Write what the screen showed into your register and your
+  report, stop waiting for that agent, and say so. A silent session is
+  a result; a wrong key is a decision made on somebody else's behalf.
+- **Say after how long you stop.** Choose a limit before you start (for
+  example ten minutes for a first message) and write it in the report.
+  An agent that has not reported by then counts as not working, whether
+  it is stuck on a question or not.
 
 ## Always give the user the session name
 

@@ -20,7 +20,8 @@ will tell it.
 # Assignment: <one line saying what is to be achieved>
 
 ## How to reach me
-<Protocol, address and credentials of the back channel.>
+<Protocol and address of the back channel. A secret is not written
+here: give the path of a mode-600 file outside every repository.>
 <Whether to append or overwrite, and how often I read it.>
 <For the folder variant: the absolute directory, the file name you
 write, the file name I write, and the format of both.>
@@ -50,8 +51,10 @@ went wrong without it.
 
 ### 1. Describe the communication mechanism and the access to it
 
-Name the protocol, the address and the credentials of the back
-channel. Do not rely on the launched harness discovering them: it
+Name the protocol and the address of the back channel. A secret
+(token, invitation, password) does not belong in this file: put it in
+a file with mode 600 outside every repository and name its path here.
+Do not rely on the launched harness discovering them: it
 cannot see your session, and a harness that has no way to answer
 will not answer at all.
 
@@ -71,8 +74,8 @@ and you want addressed messages between agents. The agreed folder
 needs no software at all.
 
 A socket, a message queue or an issue tracker work too. Whatever you
-pick, it belongs in this file with its address and its credentials,
-not in the launch prompt, which holds only a pointer.
+pick, it belongs in this file with its address, and the path of the file
+holding any secret, not in the launch prompt, which holds only a pointer.
 
 ### 2. Ask for a report after initialization
 

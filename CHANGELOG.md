@@ -12,6 +12,15 @@ behaviour.
 
 ### Documented
 
+- Secrets for a launched agent go into a mode-600 file outside every
+  repository, and only the path goes into the task file. The skill and
+  the task-file template used to say that credentials belong in the
+  assignment. `--env` is now described as unsuitable for secrets, since
+  the value stands on the command line of the call.
+- The skill gained two sections: keeping a register of the sessions
+  one has started, and waiting for an agent, including how to deal with
+  questions in the middle of a run (when to answer, when to send no
+  key, and after how long to stop waiting).
 - Starting an agent without approval prompts is the user's decision, and the
   calling harness may refuse the start even with the user's go-ahead. The
   skill, the harness document and the troubleshooting table now say so.
