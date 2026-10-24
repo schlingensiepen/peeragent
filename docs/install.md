@@ -172,9 +172,13 @@ it calls the `peeragent` you installed above.
 
 ### The other harnesses
 
-`codex`, `agy`, `opencode` and `copilot` have no skill format, so
-there is nothing to copy the directory into. This is a gap in the
-harnesses, not something peeragent works around.
+`agy` reads skills in the same shape: a directory `skills/<name>/SKILL.md`
+with `name` and `description` in its header, under `.agents/` in a
+project or in its global configuration (`documented`, by the harness's
+own guide on the host, 2026-10-24; peeragent's skill has not been
+installed there). For `codex`, `opencode` and `copilot` peeragent
+records no skill format and has not checked for one, so for them
+there is nothing to copy the directory into.
 
 What to do instead: read
 [`../skills/launch-peer-agent/SKILL.md`](../skills/launch-peer-agent/SKILL.md)

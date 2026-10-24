@@ -553,10 +553,12 @@ whichever way you start the harness.
 
 ## If your harness has no skill format
 
-This file is a Claude Code skill, and Claude Code is the only one
-of the five harnesses with a skill directory. If you are running
-`codex`, `agy`, `opencode` or `copilot`, there is no format to
-install it into. Read this file and keep it as a reference, or
+This file is a Claude Code skill, and `agy` reads the same shape
+(`documented`). Nothing has to be installed for it to work: a
+harness that is told the path to this file reads it as text, and
+that is enough. If you are running `codex`, `opencode` or `copilot`,
+peeragent knows of no format to install it into. Read this file and
+keep it as a reference, or
 translate it into whatever your harness does offer — a rules
 file, a project instruction, a note. The form is your choice. The
 obligations, the pointer prompt rule and the `send` rule are not.

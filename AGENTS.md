@@ -117,7 +117,9 @@ store:
 cp -r skills/launch-peer-agent ~/.claude/skills/
 ```
 
-The other four harnesses have no skill format.
+`agy` has the same skill shape (see [docs/install.md](docs/install.md));
+for the other three peeragent records none.
+Where nothing is installed, a harness can simply be told the path.
 Read [skills/launch-peer-agent/SKILL.md](skills/launch-peer-agent/SKILL.md)
 and carry its content over into whatever your harness offers: a rule
 file, a project instruction, a note you keep in context.
