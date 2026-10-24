@@ -1,6 +1,6 @@
 # Maturity
 
-**Report date:** 2026-10-01 · **peeragent version:** 0.2.0
+**Report date:** 2026-10-24 · **peeragent version:** 0.2.0
 
 Both command-line programs are in this repository:
 `tools/peeragent.py` (Python, standard library only) and
@@ -11,7 +11,9 @@ document keeps them apart:
 
 - **Equivalence.** `tests/conformance/run.sh` runs both programs over
   61 cases and compares them with each other. All 61 agree
-  (2026-10-01). That shows the two behave alike. It does not show that
+  (2026-10-01, and again on the development host on 2026-10-24 after
+  the documentation changes of that day: 61 of 61, not yet run on the
+  hosted images). That shows the two behave alike. It does not show that
   either behaves correctly: a mistake both make in the same way
   passes. Nine cases start a fake harness in tmux, one of them a
   harness that exits at once, one that disappears between the two
@@ -43,6 +45,12 @@ document keeps them apart:
   started against all five real harnesses on a test host, and one
   `agy` session was taken through the whole path with `send`. These
   runs are marked `tested` below, and only what they showed.
+  On 2026-10-24 the Python and Bash entry points were not both used;
+  the Bash program started `claude` 2.1.310 in a fresh directory with
+  `--harness-arg` for a narrow tool allowance. It reported the trust
+  question, `Down Enter` answered it, and the prompt passed as an
+  argument was taken up as the first turn afterwards (`tested`
+  2026-10-24, one run, then a second with the same result).
 - **Harness behaviour checked directly.** The dates in the harness
   table before 2026-09-29 are checks made on the harness itself,
   before the programs existed. They say what the harness does, not
@@ -50,15 +58,17 @@ document keeps them apart:
 
 The harness versions the statements in this document were checked
 against, seen on a test host on 2026-09-23 and again by the programs
-on 2026-09-29:
+on 2026-09-29. The last column is what `list harness` reported on
+2026-10-24; the statements below were not re-checked against those
+versions, except for `claude` (see the run of that day):
 
-| Harness | 2026-09-23 | 2026-09-29 |
-|---|---|---|
-| `claude` | `2.1.278 (Claude Code)` | `2.1.284 (Claude Code)` |
-| `codex` | `codex-cli 0.147.0` | `codex-cli 0.147.0` |
-| `agy` | `1.2.8` | `1.2.12`, later the same day `1.2.13` |
-| `opencode` | `1.18.25` | `1.18.32` |
-| `copilot` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.88.` |
+| Harness | 2026-09-23 | 2026-09-29 | 2026-10-24 |
+|---|---|---|---|
+| `claude` | `2.1.278 (Claude Code)` | `2.1.284 (Claude Code)` | `2.1.310 (Claude Code)` |
+| `codex` | `codex-cli 0.147.0` | `codex-cli 0.147.0` | `codex-cli 0.147.0` |
+| `agy` | `1.2.8` | `1.2.12`, later the same day `1.2.13` | `1.3.3` |
+| `opencode` | `1.18.25` | `1.18.32` | `1.18.33` |
+| `copilot` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.95.` |
 
 tmux on that host was 3.5a.
 All five harnesses update themselves, some of them in the background
