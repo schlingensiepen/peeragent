@@ -114,11 +114,15 @@ address). peeragent adds nothing for this.
 | `codex` | `-c mcp_servers.<name>.command=...` overrides | `documented`, not run (quota exhausted until 2026-11-19) |
 | `opencode` | the environment variable `OPENCODE_CONFIG` or `OPENCODE_CONFIG_CONTENT` names a configuration with the server | `documented`, not run |
 
-Two cautions from the same run. A tool that takes a token as a plain
-parameter puts the token into the agent's context and, in `copilot`,
-into the confirmation dialog on screen; prefer a server that reads a
-token file. And an agent that was given a server this way sees it only
-in that session: nothing is left behind to remove afterwards.
+An agent that was given a server this way sees it only in that
+session: nothing is left behind to remove afterwards. A secret that
+a tool takes as a parameter ends up in the agent's context, and in
+some harnesses in the confirmation dialog on screen (`observed`
+2026-10-24, `copilot`). That matters little where the agent has the
+secret's reach anyway - whoever can read its context can read what it
+processes - and more where the dialog is visible to others, for
+example in a shared tmux session. A tool that reads the secret from a
+file avoids both.
 
 ## Overview
 
