@@ -355,7 +355,13 @@ decision to take.
 - **Prefer the narrower route.** Allow single tools or paths if the
   harness has a switch for that, or give the harness its own
   configuration directory with the trust state already written. Both
-  leave the safety question in place where it matters.
+  leave the safety question in place where it matters. For `agy`
+  that is `--mode accept-edits`: file edits go without a question,
+  commands still ask. Put the commands the agent needs into a few
+  helper scripts in its folder, because a long command line becomes a
+  stored permission rule of its own (see `docs/harnesses.md`, agy,
+  "Approval behaviour"). `--sandbox` is no substitute: it blocks the
+  network and does not confine writes.
 - **The calling harness may refuse the start anyway.** Its own safety
   check can block a call that launches an agent without approval
   prompts, even with the user's go-ahead in the conversation
