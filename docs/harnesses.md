@@ -491,6 +491,36 @@ peeragent starts `agy` with no extra arguments. With resume it
 adds `--continue`. peeragent never passes a login flag; you must
 be logged in beforehand.
 
+### Approval behaviour
+
+What `agy` 1.4.7 does without asking, tried on 2026-10-25 in
+throwaway folders with a prompt that wrote a file and ran commands
+(`tested`; the dialog offers `1` run, `2` allow commands with this
+prefix for the conversation, `3` the same persisted, `4` cancel):
+
+| Call | File writes | Shell commands |
+|---|---|---|
+| no flag | ask | ask |
+| `--mode accept-edits` | no question | ask |
+| `--mode auto` | no question | ask (looks the same as no flag) |
+| `--mode accept-edits --sandbox` | no question | `echo` and `ls` ran without a question, `curl` asked and then failed with exit 7: the sandbox blocks the network, including loopback |
+| `--dangerously-skip-permissions` | no question | no question (not run here) |
+
+The sandbox did **not** keep writes inside the working folder: `echo
+outside > /tmp/...` succeeded, and `ls ~` listed the real home
+directory. Do not rely on `--sandbox` to confine an agent; it takes
+away the network. `--mode plan` was not run.
+
+Options `2` and `3` store a rule per command prefix in
+`~/.gemini/antigravity-cli/settings.json` (`command(<prefix>)`) and
+`~/.gemini/config/config.json`. A script that is sent as one long
+command becomes one rule of its own, so the list grows by a line per
+call and never covers the next one. No per-session or per-folder
+rule file was found (`unverified`; `agy --help` names none). The
+way to few questions is therefore a short list of helper scripts in
+the working folder, and `--mode accept-edits`
+(`--harness-arg --mode --harness-arg accept-edits`).
+
 ### Model flag
 
 `--model <model>` (`documented`, version 1.0.5 and newer). The

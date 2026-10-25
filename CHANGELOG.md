@@ -37,6 +37,9 @@ behaviour.
 
 ### Documented
 
+- What `agy` does without asking, and what `--mode accept-edits` and
+  `--sandbox` change, tried on 2026-10-25 (`docs/harnesses.md`). The
+  sandbox blocks the network and does not confine writes.
 - Secrets for a launched agent go into a mode-600 file outside every
   repository, and only the path goes into the task file. The skill and
   the task-file template used to say that credentials belong in the
