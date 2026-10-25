@@ -37,6 +37,12 @@ behaviour.
 
 ### Documented
 
+- A new section in `docs/harnesses.md` on handing an MCP server to a
+  single session, per harness: tested for `claude` and `copilot`,
+  documented only for `codex` and `opencode`, and for `agy` no flag
+  (global configuration or a plugin folder). Harnesses update
+  themselves during a `list harness`; `MATURITY.md` says so with the
+  run that showed it.
 - What `agy` does without asking, and what `--mode accept-edits` and
   `--sandbox` change, tried on 2026-10-25 (`docs/harnesses.md`). The
   sandbox blocks the network and does not confine writes.

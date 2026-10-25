@@ -97,6 +97,29 @@ not in the shell that calls peeragent: a harness in tmux inherits the
 tmux server's environment, not the caller's.
 [cli.md](cli.md) has the detail.
 
+## A tool server for one session only
+
+A launched agent sometimes needs an MCP server, for example for a
+message service. Adding it with the harness's own `mcp add` changes
+the user's global configuration, which is not yours to change; the
+switches below hand it to one session. They go through
+`--harness-arg` (and `--env` for non-secret settings such as an
+address). peeragent adds nothing for this.
+
+| Harness | Per-session route | Evidence |
+|---|---|---|
+| `claude` | `--mcp-config=<file>`, with `--strict-mcp-config` to ignore all others | `tested` 2026-10-24, 2.1.310: tools loaded, a message was sent through them |
+| `copilot` | `--additional-mcp-config` with `@<file>` | `tested` 2026-10-24, 1.0.103: same; every tool call asked once |
+| `agy` | none on the command line. `agy mcp add` writes `~/.gemini/config/mcp_config.json` (global). Its guide describes a plugin folder `.agents/plugins/<name>/mcp_config.json` in the project | route by flag: none found (`tested` 2026-10-24, 1.4.7); plugin folder `documented`, not run |
+| `codex` | `-c mcp_servers.<name>.command=...` overrides | `documented`, not run (quota exhausted until 2026-11-19) |
+| `opencode` | the environment variable `OPENCODE_CONFIG` or `OPENCODE_CONFIG_CONTENT` names a configuration with the server | `documented`, not run |
+
+Two cautions from the same run. A tool that takes a token as a plain
+parameter puts the token into the agent's context and, in `copilot`,
+into the confirmation dialog on screen; prefer a server that reads a
+token file. And an agent that was given a server this way sees it only
+in that session: nothing is left behind to remove afterwards.
+
 ## Overview
 
 | Key | Product | Binary | Prompt delivery | Resume | Duplicate | Trust answer | Version string seen 2026-09-23 |

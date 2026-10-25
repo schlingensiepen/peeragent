@@ -68,12 +68,18 @@ versions, except for `claude` (see the run of that day):
 | `claude` | `2.1.278 (Claude Code)` | `2.1.284 (Claude Code)` | `2.1.310 (Claude Code)` |
 | `codex` | `codex-cli 0.147.0` | `codex-cli 0.147.0` | `codex-cli 0.147.0` |
 | `agy` | `1.2.8` | `1.2.12`, later the same day `1.2.13` | `1.3.3`, later the same day `1.4.7` |
-| `opencode` | `1.18.25` | `1.18.32` | `1.18.33` |
-| `copilot` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.95.` |
+| `opencode` | `1.18.25` | `1.18.32` | `1.18.33`, later the same day `1.19.4` |
+| `copilot` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.88.` | `GitHub Copilot CLI 1.0.95.`, later the same day `1.0.103.` |
 
 tmux on that host was 3.5a.
 All five harnesses update themselves, some of them in the background
-during a launch, so a version can change between two invocations.
+during a launch, so a version can change between two invocations: on
+2026-10-24 a single `list harness` took about 56 seconds and ended with
+newer `opencode` and `copilot` than it started with (`observed` in the
+acceptance run), and `codex` announced an update of its own
+(0.147.0 to 0.159.2) and a missing `bubblewrap`. A caller that records
+versions as evidence should run `list harness` again after the work,
+not only before it.
 Screen wordings, key sequences and session store layouts are
 properties of those versions and not of peeragent: every statement
 here ages, and the ones marked `tested` age with the date they carry.
