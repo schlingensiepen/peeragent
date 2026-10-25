@@ -171,7 +171,7 @@ table.
 | `claude` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-23 | `--continue`, `tested` 2026-09-23 | supported, `tested` 2026-09-16 |
 | `codex` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-23 | `resume --last`, `documented` | refused; store `observed` |
 | `agy` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv` with `-i` since 2026-10-24, `tested` that day (1.3.3 directly, 1.4.7 through the Bash program's `start agent`); paste via `send` `tested` 2026-09-29 | `--continue`, `documented` | refused; store `unverified` |
-| `opencode` | `tested` 2026-09-29 | `tested` 2026-09-29 | `send_keys`, `unverified` | `--continue`, `documented` | refused; store `observed` |
+| `opencode` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv` with `--prompt` since 2026-10-25, `tested` that day (1.19.4, `opencode/big-pickle`); paste via `send` `unverified` | `--continue`, `documented` | refused; store `observed` |
 | `copilot` | `tested` 2026-09-29 | `tested` 2026-09-29 | `argv`, `tested` 2026-09-28 | `--continue`, `documented` | refused; store `observed` |
 
 "Detection" means that the binary was found and its version query
@@ -215,15 +215,16 @@ Per harness, in detail:
   while the answer was still being generated (`observed` 2026-09-29,
   both programs). The launch prompt now travels as an argument (`-i`); that
   was run against the harness directly on 2026-10-24 (1.3.3) and
-  through the Bash program's `start agent` (1.4.7), not yet through the
-  Python program.
+  through both programs' `start agent` (1.4.7; the Python program in
+  the acceptance run of 2026-10-24).
   Its session store layout remains unknown, so duplicating is still
   refused.
-- `opencode` comes up but refuses to work until a provider is
-  configured. Its wrapper may run a package install during startup,
+- `opencode` with `opencode/big-pickle` comes up ready and answers a
+  prompt given as `--prompt` (`tested` 2026-10-25, 1.19.4); the
+  `provider_prompt` classification of earlier versions was wrong and
+  is gone. Its wrapper may run a package install during startup,
   which is why a version query can time out; on 2026-09-29 the
-  process list of a start showed a package install under way. The
-  prompt hand-over by pasting has never been run.
+  process list of a start showed a package install under way.
 - `copilot` blocks with a trust question before anything else, and
   the question covers the working directory rather than the
   repository it lies in (`tested` 2026-09-28). With no credentials in

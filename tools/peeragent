@@ -1027,7 +1027,10 @@ h_claude_detect_prompt_type() {
     printf 'trust_prompt\n'
   elif [[ $text == *"Select login method"* || $text == *"Choose the text style"* ]]; then
     printf 'auth_prompt\n'
-  elif [[ $text == *"· thinking)"* || $text == *"esc to interrupt"* ]]; then
+  elif [[ $text == *"· thinking)"* || $text == *"esc to interrupt"* \
+      || $text =~ …\ \([0-9]+s\ · ]]; then
+    # The third form is the spinner of Claude Code 2.1.310, "Schlepping…
+    # (3s · ↓ 29 tokens)" (observed in the 2026-10-24 run).
     printf 'busy\n'
   elif has_ready_glyph "$text"; then
     printf 'ready\n'
@@ -1228,7 +1231,7 @@ h_agy_duplicate_session() {
 
 h_opencode_meta() {
   printf '%s|%s|%s|%s|%s|%s|%s\n' \
-    "OpenCode (anomalyco)" "opencode" "send_keys" "experimental" "unsupported" "false" ""
+    "OpenCode (anomalyco)" "opencode" "argv" "experimental" "unsupported" "false" ""
 }
 
 h_opencode_resume_hint() {
@@ -1264,14 +1267,20 @@ h_opencode_model_argv() {
   printf '%s\0%s\0' "-m" "$1"
 }
 
-h_opencode_prompt_prefix_argv() { :; }
+# `--prompt <string>` hands the prompt over at start. Tested 2026-10-25
+# against opencode 1.19.4 with opencode/big-pickle: answered at once.
+h_opencode_prompt_prefix_argv() {
+  printf -- '--prompt\0'
+}
 
 h_opencode_detect_prompt_type() {
   local text
   text=$(cat)
-  if [[ $text == *"Run /connect"* ]]; then
-    printf 'provider_prompt\n'
-  elif [[ $text == *"Ask anything"* ]]; then
+  # The tip "Run /connect to add an AI provider" sits under the input box on
+  # every start, also with a working model, so it says nothing about the
+  # state (opencode 1.19.4, found in the 2026-10-24 run). The placeholder is
+  # "Ask anything..." or, since 1.19, with the ellipsis character U+2026.
+  if [[ $text == *"Ask anything"* ]]; then
     printf 'ready\n'
   else
     printf 'unknown\n'

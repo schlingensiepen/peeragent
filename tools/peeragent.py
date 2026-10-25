@@ -640,7 +640,13 @@ class ClaudeHandler(Handler):
             return "trust_prompt"
         if "Select login method" in pane_text or "Choose the text style" in pane_text:
             return "auth_prompt"
-        if "· thinking)" in pane_text or "esc to interrupt" in pane_text:
+        # Claude Code 2.1.310 writes the spinner as "Schlepping… (3s · ↓ 29
+        # tokens)" with no "thinking" in it (observed in the 2026-10-24 run).
+        if (
+            "· thinking)" in pane_text
+            or "esc to interrupt" in pane_text
+            or re.search(r"… \(\d+s · ", pane_text)
+        ):
             return "busy"
         if line_has_exact(pane_text, "❯"):
             return "ready"
@@ -781,7 +787,7 @@ class OpencodeHandler(Handler):
     key = "opencode"
     description = "OpenCode (anomalyco)"
     binary = "opencode"
-    prompt_delivery = "send_keys"
+    prompt_delivery = "argv"
     resume_support = "experimental"
     duplicate_support = "unsupported"
     duplicate_tested = False
@@ -808,14 +814,17 @@ class OpencodeHandler(Handler):
     def model_argv(self, model):
         return ["-m", model]
 
+    # `--prompt <string>` hands the prompt over at start. Tested 2026-10-25
+    # against opencode 1.19.4 with opencode/big-pickle: answered at once.
+    def prompt_prefix_argv(self):
+        return ["--prompt"]
+
     def detect_prompt_type(self, pane_text):
-        if "Run /connect" in pane_text:
-            return "provider_prompt"
-        # The input placeholder. The provider question is checked first,
-        # so this only decides a screen that is otherwise unclassified.
-        # It has never been seen on a configured host - no provider is
-        # set up on the test machine - so it rests on the earlier direct
-        # check of the harness, not on a run through this program.
+        # The tip "Run /connect to add an AI provider" sits under the input
+        # box on every start, also with a working model, so it says nothing
+        # about the state (opencode 1.19.4, found in the 2026-10-24 run).
+        # The placeholder is "Ask anything..." or, since 1.19, with the
+        # ellipsis character U+2026.
         if "Ask anything" in pane_text:
             return "ready"
         return "unknown"

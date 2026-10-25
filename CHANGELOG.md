@@ -20,8 +20,20 @@ behaviour.
   which `-i` was started in a plain tmux session and then through
   `start agent`; until then `-i` had never been run and the paste path
   was used. A conformance case (`start-agy-prompt-as-argument`) checks
-  that both programs build the same command line. Only `opencode` still
-  takes its prompt by paste.
+  that both programs build the same command line.
+
+- `opencode` is no longer reported as `provider_prompt` on a working
+  start. Its screen carries the tip `Run /connect to add an AI provider`
+  under the input box on every start, also with a model that needs no
+  login, and the check for that tip came before the check for the
+  input placeholder; so every start ended in `awaiting provider_prompt`
+  and the launch prompt was never delivered (found in the acceptance run
+  of 2026-10-24, opencode 1.19.4). The tip is ignored now, and the
+  placeholder is accepted with three dots or the ellipsis character
+  U+2026. The launch prompt goes as `opencode --prompt "<prompt>"`
+  (`tested` 2026-10-25), so `opencode` takes it as an argument like the
+  others and all five harnesses now do. The conformance case
+  `start-opencode-prompt-as-argument` checks the command line.
 
 ### Documented
 

@@ -25,7 +25,7 @@ The result is the `awaiting` field of the pane message.
 | `busy` | The harness is working: a spinner, a streaming answer or a tool call. | Wait. Watch the pane with `tmux capture-pane`. A prompt sent while the harness is busy is buffered by the interface and processed after the running turn (tested for the GitHub Copilot CLI on 2026-09-23). |
 | `trust_prompt` | The harness is asking whether it may work in this directory. | Send the harness's key sequence with `tmux send-keys`, or ask the user first. Afterwards follow the hint of the deferred-prompt message if there was one. |
 | `auth_prompt` | The harness is not logged in. | Tell the user. The login happens outside peeragent and usually needs a browser. |
-| `provider_prompt` | The harness has no model provider configured. Only OpenCode reaches this state. | Tell the user. Configure a provider inside the pane with `/connect`. |
+| `provider_prompt` | The harness has no model provider configured. Reserved: no harness is reported in this state at present, because OpenCode's standing `/connect` tip appears on a working start too. | Tell the user. Configure a provider inside the pane with `/connect`. |
 | `error` | Reserved; not assigned in this version. A harness that died produces its own exited message and exit code 4 instead. | Nothing. If you do see it, report it. |
 | `unknown` | No pattern matched. | Show the captured lines to the user and ask. This is also what an unrecognised waiting state looks like, for example the usage-limit dialog of the Codex CLI. |
 
@@ -98,21 +98,21 @@ configures it and then not again, whatever the directory.
 On 2026-08-17, four of five harnesses were not able to answer
 anything five seconds after starting in a fresh directory: the
 Codex CLI and the GitHub Copilot CLI asked for directory trust,
-the Antigravity CLI asked for a login method, and OpenCode had no
-provider. On 2026-09-23, Claude Code 2.1.278 was found to have a
+the Antigravity CLI asked for a login method, and OpenCode was
+thought to have no provider (that reading was wrong, see
+`harnesses.md`). On 2026-09-23, Claude Code 2.1.278 was found to have a
 trust prompt of its own. So on a machine where no account and no
 provider are configured, all five stop. On 2026-09-29, on a host
 where the Antigravity CLI had an account, it asked the directory
-question and then came up ready (`tested`). What OpenCode shows on
-a machine where a provider is configured has not been observed, so
-treat it as unknown rather than as ready.
+question and then came up ready (`tested`). OpenCode with its free
+model came up ready on 2026-10-24 (`tested`).
 
 | Harness | First screen in a fresh directory | Key sequence |
 |---|---|---|
 | `claude` | `trust_prompt` — the preselected option is `No, exit` | `Down Enter` |
 | `codex` | `trust_prompt` — trust applies to the Git repository root | `1` |
 | `agy` | `trust_prompt` — or `auth_prompt` with no account configured | `Enter`; its dialog preselects the accepting option |
-| `opencode` | `provider_prompt` — no provider configured | none; run `/connect` in the pane |
+| `opencode` | `ready` (placeholder `Ask anything`), with the standing tip `Run /connect` under it; a missing provider shows only after the first turn | none |
 | `copilot` | `trust_prompt` — `1` once, `2` remembers the folder | `1` |
 
 The key sequences are `tmux send-keys` arguments, not characters
@@ -143,10 +143,11 @@ There are consequences for the start prompt:
   field: capture the pane once it shows a state you understand, and
   deliver again **only** if the prompt is not there. Delivering
   twice sends it twice.
-- With the one that takes it by paste (`opencode`) nothing was
-  delivered while the pane was not ready, and the deferred-prompt
-  message says `send_keys`. Answer the question first, then deliver
-  with `peeragent send`.
+- With a harness that takes it by paste, nothing is delivered while
+  the pane is not ready, and the deferred-prompt message says
+  `send_keys`. Answer the question first, then deliver with
+  `peeragent send`. No supported harness does this at start any
+  more; `send` itself still pastes.
 
 Trust decisions are remembered per directory by Claude Code
 (tested 2026-09-23), and the GitHub Copilot CLI offers a remember

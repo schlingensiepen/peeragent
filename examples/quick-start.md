@@ -200,10 +200,11 @@ peeragent send \
   --json
 ```
 
-`send` is also the way for a harness that takes its prompt by paste
-(`opencode`): there `agent.prompt_deferred` says `send_keys`, nothing
-was delivered, and you call `send` once the question is answered.
-Until 2026-10-24 `agy` was such a harness, and the output of
+`send` is also the way for a harness that takes its prompt by paste:
+there `agent.prompt_deferred` says `send_keys`, nothing was delivered,
+and you call `send` once the question is answered. No supported
+harness works that way at start any more. Until 2026-10-24 `agy` and
+until 2026-10-25 `opencode` were such harnesses, and the output of
 `send` below is from that time (2026-09-29, `agy` 1.2.13). It shows
 what `send` reports: the screen before the paste, the bytes pasted and
 the screen after it.

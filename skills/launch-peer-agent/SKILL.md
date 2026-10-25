@@ -244,10 +244,10 @@ and keep two causes apart. `claude`, `codex` and `copilot` ask
 whether they may trust the directory; that happens because the
 directory is new to them. `agy` also asks about the directory
 once an account is configured, and otherwise stops at a login
-selection; `opencode` asks for a provider whenever none is set up,
-which has nothing to do with the directory. What a configured
-`opencode` shows first is still unknown here, so do not promise a
-user that it will come up ready. Either way, a first screen that is
+selection; `opencode` has no trust prompt and shows a standing tip about
+`/connect` even when it works. With a model it can use, such as
+`opencode/big-pickle`, it came up ready (`tested` 2026-10-24); with
+no usable provider the error appears after the first turn. Either way, a first screen that is
 not ready is the normal case.
 
 After the boot wait, peeragent captures the visible pane and
@@ -280,7 +280,7 @@ tmux send-keys -t "=<session>:" Down Enter
 | `codex` | trust prompt | `1` |
 | `copilot` | trust prompt | `1` |
 | `agy` | trust prompt, or a login selection when no account is configured | `Enter` - its dialog preselects the accepting option |
-| `opencode` | provider selection, no trust prompt | none; the user has to configure a provider |
+| `opencode` | no trust prompt; ready at once | none |
 
 The key sequences were tested on 2026-09-23 and corrected on
 2026-09-28. `claude` needs `Down Enter` rather than a confirming
@@ -307,10 +307,8 @@ git root for `codex`, so the second start in the same place
 usually goes straight to work. `copilot` asks again unless you answered with its
 remembering option, which peeragent does not choose for you.
 
-For `codex` no confirmed ready marker exists, and the one for
-`opencode` has never been seen on a machine with a provider set up,
-so a healthy first screen from either may still be reported as
-`unknown`. Show it to the user instead of assuming failure.
+For `codex` no confirmed ready marker exists, so a healthy first
+screen may still be reported as `unknown`. Show it to the user instead of assuming failure.
 
 **`unknown` is not a failure.** peeragent knows the questions that
 recur and reports everything else as `unknown` with the lines it

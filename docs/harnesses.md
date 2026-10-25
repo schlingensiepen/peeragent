@@ -104,7 +104,7 @@ tmux server's environment, not the caller's.
 | `claude` | Claude Code CLI (Anthropic) | `claude` | `argv` | `ok` | `ok`, tested | `Down Enter` | `2.1.278 (Claude Code)` |
 | `codex` | OpenAI Codex CLI | `codex` | `argv` | `experimental` | `unsupported` | `1` | `codex-cli 0.147.0` |
 | `agy` | Google Antigravity CLI | `agy` | `argv` | `experimental` | `unsupported` | `Enter` | `1.2.8` |
-| `opencode` | OpenCode (anomalyco) | `opencode` | `send_keys` | `experimental` | `unsupported` | none | `1.18.25` |
+| `opencode` | OpenCode (anomalyco) | `opencode` | `argv` | `experimental` | `unsupported` | none | `1.18.25` |
 | `copilot` | GitHub Copilot CLI | `copilot` | `argv` | `experimental` | `unsupported` | `1` | `GitHub Copilot CLI 1.0.88.` |
 
 The version strings were `tested` on 2026-09-23, as the literal
@@ -254,7 +254,11 @@ been through the onboarding once.
 **Busy.** The marker is `· thinking)`, as in the spinner line
 `✢ Pouncing… (1s · thinking)` (`tested` 2026-09-23). The second
 marker `esc to interrupt` is `unverified`: it did not appear in the
-test, and no source establishes it.
+test, and no source establishes it. Claude Code 2.1.310 no longer
+writes `thinking` there: the spinner reads `Schlepping… (3s · ↓ 29
+tokens)` (`observed` 2026-10-24, one capture). peeragent accepts
+`… (<n>s · ` as a third busy marker; with the old two alone, a busy
+pane with the input box showing was reported `ready`.
 
 **Ready.** A line that is exactly `❯` once whitespace is stripped
 (`tested`; Claude Code writes `❯ ` with a trailing space). The
@@ -647,8 +651,9 @@ The output is a bare version number with no prefix (`tested`); on
 
 ### Start arguments
 
-peeragent starts `opencode` with no extra arguments. With resume
-it adds `--continue`.
+peeragent starts `opencode` with no extra arguments, and with the
+prompt as `--prompt <string>` when there is one. With resume it
+adds `--continue`.
 
 ### Model flag
 
@@ -687,10 +692,13 @@ peeragent reports that no store exists for any path.
 
 ### Prompt delivery
 
-`send_keys`; no initial prompt for the interactive start is
-documented. peeragent pastes into the running pane, and only when
-the pane is `ready`. Because no provider was configured in either
-test run, the paste path for opencode is `unverified`.
+`argv`: `opencode --prompt <string>` runs the prompt at start and
+stays in the session (`tested` 2026-10-25, opencode 1.19.4 with
+`opencode/big-pickle`, answered within seconds). Until then
+peeragent pasted into the running pane, which was never run
+(`unverified`) and which the 2026-10-24 acceptance run showed to be
+blocked by the misreading described under Waiting states. `send`
+still pastes.
 
 ### Duplicate
 
@@ -703,9 +711,16 @@ harness-native route is its own export and import commands
 
 ### Waiting states
 
-**Provider prompt.** Both test runs ended here (`tested`
-2026-08-17, again 2026-09-23 with empty configuration
-directories):
+**No provider question.** The screen below was read as a provider
+question in the first versions. It is not one: the line `Tip Run
+/connect to add an AI provider` is a standing tip under the input
+box and appears on every start, with a working model too (`tested`
+2026-10-24, opencode 1.19.4 with `opencode/big-pickle`, which needs
+no login). peeragent therefore no longer reports `provider_prompt`
+for opencode. A start with no usable provider will show as an error
+after the first turn, not as a state before it; whether there is a
+screen of its own for that is `unverified`. The test runs of
+2026-08-17 and 2026-09-23 saw this screen:
 
 ```text
     █▀▀█ █▀▀█ █▀▀█ █▀▀▄ █▀▀▀ █▀▀█ █▀▀█ █▀▀█
@@ -719,15 +734,12 @@ directories):
  ● Tip Run /connect to add an AI provider and start coding
 ```
 
-The marker is `Run /connect`. There is no key sequence: the
-interface is up but has no provider, so configure one with
-`/connect` inside the pane. The trust answer for opencode is
-empty.
+The trust answer for opencode is empty.
 
-**Ready.** `Ask anything` without the tip text. This is only
-partly backed: the placeholder `Ask anything...` is `tested`, but
-in both runs it appeared together with the tip line, and whether
-it disappears while opencode works is `unverified`.
+**Ready.** The placeholder `Ask anything`, written `Ask anything...`
+up to 1.18 and `Ask anything…` (the ellipsis character U+2026) in
+1.19.4 (`tested` 2026-10-24). The tip line does not count. Whether
+the placeholder disappears while opencode works is `unverified`.
 
 **Startup.** The launcher runs a package install before the
 interface appears, seen as `npm install opencode-ai@1.18.18`
@@ -929,6 +941,9 @@ mean the harness is ready, so capture again rather than assume.
  ❯
   ○ Working esc interrupt                       Auto → mai-code-1.1-flash
 ```
+
+Copilot 1.0.103 writes `● Working esc esc interrupt` (`observed`
+2026-10-24); the substring `esc interrupt` still matches.
 
 **Ready.** A line that is exactly `❯` once whitespace is stripped
 (`tested` 2026-09-23). As the capture above shows, that line is

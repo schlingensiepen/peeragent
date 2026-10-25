@@ -21,7 +21,8 @@
 #               session that is gone, which the comparison can see - the
 #               captured screen itself is compared only by line count.
 #   needprompt  refuse to start unless the last argument is the prompt
-#               text "read TASK.md" and the one before it is -i, the way a
+#               text "read TASK.md" and the one before it is -i (agy) or --prompt
+#               (opencode), the way a
 #               harness that takes its prompt as an argument is started.
 #               Same device as needenv: a prompt that did not arrive as the
 #               last argument becomes a session that is gone.
@@ -97,8 +98,10 @@ BOX
   needprompt)
     last="${*: -1}"
     prev="${*: -2:1}"
-    if [ "$#" -lt 2 ] || [ "$last" != "read TASK.md" ] || [ "$prev" != "-i" ]; then
-      printf '%s: the prompt did not arrive as "-i" and last argument\n' "$name" >&2
+    want="-i"
+    [ "$name" = opencode ] && want="--prompt"
+    if [ "$#" -lt 2 ] || [ "$last" != "read TASK.md" ] || [ "$prev" != "$want" ]; then
+      printf '%s: the prompt did not arrive as "%s" and last argument\n' "$name" "$want" >&2
       exit 1
     fi
     printf '%s ready\n' "$name"

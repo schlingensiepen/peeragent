@@ -1,0 +1,1 @@
+start agent --folder @SANDBOX@/w --harness opencode --prompt-file @SANDBOX@/p.txt --boot-wait 2 --json
