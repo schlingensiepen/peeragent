@@ -120,7 +120,7 @@ fallback that no harness update can take away.
 
 So anyone who wants to exchange information with the launched agent
 has to establish a mechanism and describe it in the assignment,
-including how to reach it. The agent will not discover it. Two ways
+including how to reach it. The agent will not discover it. Three ways
 are worth recommending:
 
 - **A folder both sides agree on.** Name a directory in the
@@ -133,6 +133,9 @@ are worth recommending:
   A small agent-to-agent protocol, for when file dropping is not
   enough and you want addressed messages between agents. It was built
   with peeragent. The folder above needs nothing but a directory.
+- **[skill-a2a](https://github.com/schlingensiepen/skill-a2a).** A
+  skill for exchanging messages between agents on one machine,
+  without a server: the local counterpart to simple-a2a.
 
 Either way the mechanism belongs in the assignment text, not in the
 launch prompt, which is limited to a pointer. `docs/cli.md` explains
