@@ -4,11 +4,13 @@ All notable changes to peeragent are recorded here.
 The format follows Keep a Changelog, and the version numbers follow
 Semantic Versioning.
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-10-25
 
 Two options a caller asked for, after a project tried to start eleven
-agents at once and found what was missing. Nothing existing changed its
-behaviour.
+agents at once and found what was missing, then a first end-to-end run
+with an agent as orchestrator (2026-10-24). Two things changed
+behaviour: `agy` and `opencode` now get the launch prompt as an
+argument, and `opencode` is no longer reported as `provider_prompt`.
 
 ### Changed
 
